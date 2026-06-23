@@ -125,7 +125,8 @@ body {
   transition: opacity 0.34s ease; /* ギャラリー移行時のフェード用 */
 }
 
-.envelope > img {
+.envelope > img,
+.envelope > canvas {
   position: absolute;
   inset: 0;
   width: 100%;

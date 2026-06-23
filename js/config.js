@@ -37,11 +37,48 @@ const framePath  = (n) => `assets/envelope01/${String(n).padStart(4, '0')}.webp`
 const framePath2 = (n) => `assets/envelope02/${String(n).padStart(4, '0')}.webp`;
 const framePath3 = (n) => `assets/envelope01_shadow/${String(n).padStart(4, '0')}.webp`;
 
-// フレーム事前読み込み
-for (let i = 1; i <= TOTAL_FRAMES; i++) {
-  const a = new Image(); a.src = framePath(i);
-  const b = new Image(); b.src = framePath2(i);
-  const c = new Image(); c.src = framePath3(i);
+// フレームを「一度だけデコードして ImageBitmap で保持」し、全封筒で共有する。
+// 旧方式（毎フレーム img.src を差し替え）は WebP の再デコードがメインスレッドで
+// 走って重かったため、事前デコード済みビットマップを canvas に drawImage する（deck.js）。
+// 原寸(950x1080)×90枚をRGBA保持すると ~350MB と重いので、表示サイズ×DPRに縮小して保持。
+const FRAME_BITMAPS = { e1: [], e2: [], shadow: [] }; // index 1..TOTAL_FRAMES
+let framesReady = null; // deck.js が表示実寸を測ってから loadFrames() を一度だけ呼ぶ
+
+// maxW: デコード先の最大幅(px)。onFirst: 先頭フレームが描ける状態になった時に1度呼ぶ。
+function loadFrames(maxW, onFirst) {
+  if (framesReady) return framesReady;
+  const w = Math.min(950, Math.max(1, Math.round(maxW || 950)));
+  const h = Math.round(w * 1080 / 950);
+  const canBitmap = (typeof createImageBitmap === 'function');
+  const opt = canBitmap ? { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' } : null;
+  const decode = (path, into, idx) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      if (opt) createImageBitmap(img, opt).then(
+        (b) => { into[idx] = b; resolve(); },
+        () => { into[idx] = img; resolve(); }); // 失敗時は <img> をそのまま使う
+      else { into[idx] = img; resolve(); }
+    };
+    img.onerror = () => resolve();
+    img.src = path;
+  });
+  framesReady = (async () => {
+    // 先頭フレームを最優先でデコード → 初期表示(閉じた状態)を即描画できるように
+    await Promise.all([
+      decode(framePath(1),  FRAME_BITMAPS.e1, 1),
+      decode(framePath2(1), FRAME_BITMAPS.e2, 1),
+      decode(framePath3(1), FRAME_BITMAPS.shadow, 1),
+    ]);
+    if (typeof onFirst === 'function') onFirst();
+    const tasks = [];
+    for (let i = 2; i <= TOTAL_FRAMES; i++) {
+      tasks.push(decode(framePath(i),  FRAME_BITMAPS.e1, i));
+      tasks.push(decode(framePath2(i), FRAME_BITMAPS.e2, i));
+      tasks.push(decode(framePath3(i), FRAME_BITMAPS.shadow, i));
+    }
+    await Promise.all(tasks);
+  })();
+  return framesReady;
 }
 
 /* ============================================================

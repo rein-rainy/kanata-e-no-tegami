@@ -24,9 +24,9 @@ WORKSHOPS.forEach((ws, i) => {
     <div class="envelope" data-letter="${i}">
       <img class="layer-03" src="assets/envelope03.webp" alt="">
       <div class="contents-clip"><div class="contents"></div></div>
-      <img class="layer-02 frame2" src="${framePath2(1)}" alt="">
-      <img class="layer-01 frame1" src="${framePath(1)}" alt="">
-      <img class="layer-shadow frame-shadow" src="${framePath3(1)}" alt="">
+      <canvas class="layer-02 frame2" width="950" height="1080"></canvas>
+      <canvas class="layer-01 frame1" width="950" height="1080"></canvas>
+      <canvas class="layer-shadow frame-shadow" width="950" height="1080"></canvas>
     </div>
     <div class="label">
       <div class="no">LETTER ${String(i + 1).padStart(2, '0')} / 09</div>
@@ -37,9 +37,12 @@ WORKSHOPS.forEach((ws, i) => {
 
   const envelopeEl = card.querySelector('.envelope');
   const contentsEl = card.querySelector('.contents');
-  const frameEl  = card.querySelector('.frame1');        // envelope01
-  const frameEl2 = card.querySelector('.frame2');        // envelope02
-  const frameElS = card.querySelector('.frame-shadow');  // envelope01_shadow
+  const frameEl  = card.querySelector('.frame1');        // envelope01 (canvas)
+  const frameEl2 = card.querySelector('.frame2');        // envelope02 (canvas)
+  const frameElS = card.querySelector('.frame-shadow');  // envelope01_shadow (canvas)
+  const c1 = frameEl.getContext('2d');
+  const c2 = frameEl2.getContext('2d');
+  const cS = frameElS.getContext('2d');
   let rafId = null;
 
   // 中身DOMを letterContents から再生成
@@ -94,13 +97,23 @@ WORKSHOPS.forEach((ws, i) => {
     }
   }
 
+  // 事前デコード済みビットマップを canvas へ描画（再デコード無し＝高速）。
+  // bm は ImageBitmap か、フォールバック時は <img>。バッファは素材実寸に合わせる。
+  function drawFrame(canvas, c2d, bm) {
+    if (!bm) return; // まだデコード前なら何もしない（loadFrames 完了後に再描画される）
+    const w = bm.naturalWidth || bm.width, h = bm.naturalHeight || bm.height;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    c2d.clearRect(0, 0, w, h);
+    c2d.drawImage(bm, 0, 0);
+  }
   // 封筒の表示を指定フレームに
   function setEnv(frame) {
-    frameEl.src     = framePath(frame);         // envelope01
-    frameEl2.src    = framePath2(frame);        // envelope02
-    frameElS.src    = framePath3(frame);        // envelope01_shadow
+    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]);     // envelope01
+    drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]);     // envelope02
+    drawFrame(frameElS, cS, FRAME_BITMAPS.shadow[frame]); // envelope01_shadow
     frameEl.classList.toggle('is-back', frame >= BACK_FRAME);
   }
+  const redrawCurrent = () => setEnv(frameAt(env.v));
   const frameAt = (p) => Math.min(TOTAL_FRAMES, Math.max(1,
     Math.round(1 + p * (TOTAL_FRAMES - 1))));
 
@@ -180,16 +193,14 @@ WORKSHOPS.forEach((ws, i) => {
     env.v = env.target = 0; env.delayLeft = 0;
     con.v = con.target = 0; con.delayLeft = 0;
     shn.v = shn.target = 0; shn.delayLeft = 0;
-    frameEl.src  = framePath(1);
-    frameEl2.src = framePath2(1);
-    frameElS.src = framePath3(1);
-    frameEl.classList.remove('is-back');
+    setEnv(1); // フレーム1(閉じた状態)を描画。is-back もここで解除される
     renderContents();
     applyContents(0);
   }
 
   renderContents();
   applyContents(0);
+  setEnv(1); // 初期フレーム。デコード前なら空のまま → loadFrames 完了時に再描画
 
   // 通常モードのみ操作を割り当て
   if (!DEBUG) {
@@ -210,8 +221,19 @@ WORKSHOPS.forEach((ws, i) => {
     }
   }
 
-  ctx.push({ cardEl: card, envelopeEl, contentsEl, renderContents, applyContents, animate, reset, holdOpen, holdOpenThen, releaseClose, isOpen });
+  ctx.push({ cardEl: card, envelopeEl, contentsEl, renderContents, applyContents, animate, reset, holdOpen, holdOpenThen, releaseClose, isOpen, redrawCurrent });
 });
+
+// フレームのデコードを開始。表示実寸×DPRに合わせて縮小し、メモリを節約する。
+// clientWidth の読み取りでレイアウトが確定するので rAF を待たず同期で測れる
+// （rAF は非表示タブでは発火しないため、デコード開始を rAF に依存させない）。
+{
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dispW = (ctx[0] && ctx[0].envelopeEl.clientWidth) || 520;
+  const redrawAll = () => ctx.forEach((C) => C.redrawCurrent());
+  // 先頭フレーム確定時（onFirst）と全フレーム確定時（then）に描き直す
+  loadFrames(Math.round(dispW * dpr), redrawAll).then(redrawAll);
+}
 
 /* ───── ドットナビ生成 ───── */
 const cards = Array.from(deck.querySelectorAll('.card'));
