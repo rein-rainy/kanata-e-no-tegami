@@ -179,8 +179,10 @@ body.debug .contents-clip { clip-path: none; }
   position: absolute;
   width: 50%;                 /* 幅は固定（編集不要） */
   transform-origin: center center;
-  will-change: transform;
 }
+/* will-change は再生中だけ付与。静止時はレイヤー化を解いて表示倍率の解像度で
+   描き直させる（scale拡大時のビットマップ引き伸ばしによるボケを防ぐ）。 */
+.envelope.playing .content-obj { will-change: transform; }
 .content-obj img {
   width: 100%; height: auto; display: block;
   user-select: none; -webkit-user-drag: none;
