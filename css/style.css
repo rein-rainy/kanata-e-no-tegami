@@ -1,0 +1,434 @@
+:root {
+  --envelope-width: clamp(270px, 46vmin, 520px);
+  --ink: #ffffff;
+  /* グロー（封筒背面・ラベル共通）の色と濃さ */
+  --glow-color: 8, 121, 186;     /* #0879ba */
+  --glow-alpha: 1.0;             /* 濃さ。上げるほど濃い */
+  /* マスク画像をdata URIで埋め込み（file://でもmaskが効くように。
+     外部URLのmaskはfile://だとクロスオリジン拒否で要素が消えるため）。 */
+  --mask-env: url(data:image/webp;base64,UklGRh4mAABXRUJQVlA4WAoAAAAQAAAAtQMANwQAQUxQSMAMAAABxiEawXj231rSnBQRSbQ/pY9DSTuSJEeys4+zY+LBIAYMevB5zw76HFfpBmQ6Sc/9rj1sZkRIQiTJkaQqaOhZZRFZ89vTEiBJ/v8PQkSEJNe2w7YxCGb9BMuy2ez/8PBzfnELMiLcSJIbNwxQBRSJDwjnAnaQI+0++b/8999///3333///ffff//9999///3333///ffff//9999///3333///ffff//9999///3333///ffff//9999///3333///ffff//9999///3333///ffff//9999///3333///ffff//9999///3333///ffff/9P/q+T/+vk/zr5v/5/bn28ukjH3dkGQEGbs5QMzGrLkjMkgCA1W4g0+AxBQkYpSEYeNlJW4eqZ1HIzMu7Zdg2nMaIoxplictxKeZxN5fAhWxdO54V5qLrjJjFFf5mdmt6c4qxuZLOxotHOX5tqTriHtgc5DTyTKpEbHt+B5WYma+fiPiuxOY41sc4mCuh8OeRUcDepMyEHwRcftZomE1Sff5cp5BPiz3ZAH816/fPd00Ny18B7CuwGFG0y7jYTisp36SYRzCdhLbIJQlGKmIIBUqB847UFEJEGBvJwLEY9cUZKLVpoMTlnY1Ixx21b5DwBsaVcQyhaeLqH0ArG1ai+Utgh/kBWm6Ku0kIdoRhB7f0dulnE7wlQVdWockhAo5NaDZAKZ5MOaF8nMvIbLj4DgWlvZDxZURRAsMh108DkhZ0yRVQgHLa4G46eBBBiamAgbAYgg/L0gIgNeoO2LY3OgRpkU1qUU+hgD4gSaMiC1aAHnWm4eQGBudzeY2KwJPR2aQnMIooWEhAlIMntTRnF8KBojHLL9dNbs5b1H7WVwWJWR5qkrtlhFyAve2aK966zSepS7G7DVPoCfayz/c9rmn17okdVRed5ijRB3FfJHrhhdrd+nZ3CC7Y74Z06R7uFayb4k4Po7BhmBt2X8HWultXGXWdBLzWI+d73Dcij19/MevfnP0fS7Vb/OI6u7fLarOVIup7d5fWxdOWXw1H2Jr+/M5dvx9JXsQ9TemI0ZplXXmGWaTsxZZgli9rTq2fBrP3zhvRkyfx+MSXMnsGsh+CdDVq/3k7wd+K+MRUjfNri1CaL2SvYei2U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);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  color: var(--ink);
+  /* 背景は bg.mp4（.bg-video）が担当。動画の下地として黒を敷く */
+  background: #000;
+  overflow: hidden;            /* スクロールは deck が担当 */
+}
+
+/* ───── 背景動画（全画面ループ） ───── */
+.bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;                 /* 全コンテンツの背面に固定 */
+  pointer-events: none;
+}
+
+/* スマホ（縦画面・タッチ端末）では横長動画を90°回転。
+   回転後も画面を覆うよう、幅と高さを入れ替えて中央配置する。 */
+@media (max-width: 768px) and (pointer: coarse) {
+  .bg-video {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: 100dvh;             /* 回転後の横幅＝画面の高さ */
+    height: 100dvw;            /* 回転後の縦幅＝画面の幅 */
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+}
+
+/* ───── 縦カードデッキ ───── */
+.deck {
+  height: 100dvh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.deck::-webkit-scrollbar { display: none; }
+
+.card {
+  position: relative;
+  height: 100dvh;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6rem;
+  padding: 2rem;
+  background: transparent;     /* 背景は body 側で固定 */
+  /* グローは .envelope::before（封筒の後ろ）が担当。 */
+}
+/* ギャラリー展開中はグローをフェードで消す（上昇〜受け渡しに同期）。 */
+.card.gallery-dim .envelope::before { opacity: 0; }
+
+/* ───── 表紙カード ───── */
+.cover { gap: 1.2rem; text-align: center; }
+.cover h1 {
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
+}
+.cover p {
+  font-size: clamp(0.8rem, 2.4vw, 1rem);
+  opacity: 0.6;
+  letter-spacing: 0.2em;
+  line-height: 1.9;
+}
+.scroll-hint {
+  margin-top: 2.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  opacity: 0.5;
+  animation: floaty 1.8s ease-in-out infinite;
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50%      { transform: translateY(6px); opacity: 0.9; }
+}
+
+/* ───── 封筒（重ねレイヤー） ───── */
+.envelope {
+  position: relative;
+  width: var(--envelope-width);
+  aspect-ratio: 950 / 1080;
+  cursor: pointer;
+  transition: transform 0.5s ease;
+}
+.envelope:hover { transform: translateY(-8px); }
+
+/* 封筒の後ろのグロー。 */
+.envelope::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;                 /* 全レイヤーの背面（封筒の下） */
+  background: rgb(var(--glow-color));
+  /* 封筒のシルエットにマスクしてからぼかすことで、空いた上部に青がたまらず
+     封筒の形に沿ったグローになる（旧 drop-shadow と同じ見え方）。 */
+  -webkit-mask: var(--mask-env) center / contain no-repeat;
+  mask: var(--mask-env) center / contain no-repeat;
+  filter: blur(56px);
+  pointer-events: none;
+  transition: opacity 0.34s ease; /* ギャラリー移行時のフェード用 */
+}
+
+.envelope > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* レイヤー順: envelope03(最背面) < 中身 < envelope02 < envelope01 */
+.layer-03 { z-index: 1; }       /* 最背面 */
+.contents-clip { z-index: 2; }  /* 中身（02と03の間） */
+.layer-02 { z-index: 3; }
+.layer-01 {                     /* 最初は最前面・1px下 */
+  z-index: 4;
+  transform: translateY(1px);
+}
+.layer-01.is-back { z-index: 0; } /* 15フレーム目以降は最背面 */
+.layer-shadow {                 /* 影レイヤー: 乗算合成で最上面 */
+  z-index: 5;
+  mix-blend-mode: multiply;
+  -webkit-mask: var(--mask-env) center / contain no-repeat;
+  mask: var(--mask-env) center / contain no-repeat;
+}
+
+/* ───── 中身（手紙の要素） ───── */
+/* クリップは外側ラッパー(.contents-clip)に固定。内側(.contents)を上下に動かしても
+   クリップ窓は封筒に対して固定されるので、上昇/収納で口位置がズレない。 */
+.contents-clip {
+  position: absolute; inset: 0; pointer-events: none;
+  /* 封筒(手紙)の上端は上から442px(=1080px基準で40.93%)。
+     そこより上に出た部分は左右クリップなし（自由にはみ出しOK）。
+     封筒の中(442pxより下)は左右8px・下17px内側でクリップ。 */
+  clip-path: polygon(
+    -9999px -9999px,
+    calc(100% + 9999px) -9999px,
+    calc(100% + 9999px) 40.93%,
+    calc(100% - 8px) 40.93%,
+    calc(100% - 8px) calc(100% - 17px),
+    8px calc(100% - 17px),
+    8px 40.93%,
+    -9999px 40.93%
+  );
+}
+/* 内側: オブジェクトを保持し、上昇/収納時はこの要素ごと translateY する */
+.contents { position: absolute; inset: 0; pointer-events: none; }
+/* デバッグ時はクリッピングを解除して全オブジェクトを確認できるように */
+body.debug .contents-clip { clip-path: none; }
+.content-obj {
+  position: absolute;
+  width: 50%;                 /* 幅は固定（編集不要） */
+  transform-origin: center center;
+  will-change: transform;
+}
+.content-obj img {
+  width: 100%; height: auto; display: block;
+  user-select: none; -webkit-user-drag: none;
+}
+/* ステッカー風ハイライト: 斜めグラデーション(透明→白半透明→透明)を画像形にマスク */
+.content-obj .shine {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 25%,
+    rgba(255,255,255,0.6) 50%,
+    transparent 75%);
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  background-position-x: 130%;             /* 既定は画面外（p=0相当） */
+  -webkit-mask-size: 100% 100%;  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+/* 編集モードのみ操作可能 */
+body.debug .content-obj {
+  pointer-events: auto; cursor: move;
+  outline: 1px dashed rgba(120, 180, 255, 0.35);
+}
+body.debug .content-obj.selected { outline: 2px solid #4fa3ff; }
+
+/* デバッグ: 再生していない間は envelope01 を非表示（中身を編集しやすく） */
+body.debug .layer-01 { display: none; }
+body.debug .envelope.playing .layer-01 { display: block; }
+
+/* ───── 編集ギズモ（回転・拡縮・パス制御点） ───── */
+.gizmo { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: none; }
+body.debug .envelope.editing .gizmo { display: block; }
+body.debug .envelope.playing .gizmo { display: none; }       /* 再生中は隠す */
+body.debug .envelope.playing .content-obj { outline: none; } /* 再生中は枠線なし */
+.gizmo .path { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.g-handle {
+  position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border-radius: 50%; pointer-events: auto; cursor: grab;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.5);
+}
+.g-rot   { background: #4fd36a; }   /* 回転 */
+.g-scale { background: #ffb84f; }   /* 拡縮 */
+.g-ctrl  { background: #ff5ea3; width: 14px; height: 14px; margin: -7px 0 0 -7px; } /* パス制御点 */
+.g-line  { stroke: rgba(255,255,255,0.4); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* ───── ラベル ───── */
+.label {
+  text-align: center; max-width: 30rem;
+  /* 旧 .card のグローを封筒へ移したぶん、テキストにも控えめな青グローを残す。 */
+  filter: drop-shadow(0 0 24px rgba(var(--glow-color), var(--glow-alpha)));
+  transition: filter 0.34s ease;
+}
+.card.gallery-dim .label { filter: drop-shadow(0 0 0 transparent); }
+.label .no {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  color: #fff;
+  opacity: 1;
+}
+.label .date {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: #fff;
+  opacity: 1;
+}
+.label .title {
+  margin-top: 0.4rem;
+  font-size: clamp(1.1rem, 3.4vw, 1.6rem);
+  line-height: 1.5;
+}
+
+/* ───── 右側ドットナビ ───── */
+.dots {
+  position: fixed;
+  top: 50%;
+  right: clamp(0.8rem, 2vw, 1.8rem);
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  z-index: 50;
+}
+.dots button {
+  width: 8px;
+  height: 8px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+.dots button.active {
+  background: var(--ink);
+  transform: scale(1.6);
+}
+
+/* ギャラリー用ドットナビ（横向き・中央下）。縦デッキの .dots と同じ見た目 */
+.gallery-dots {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(0.8rem, 3vh, 2rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 0.7rem;
+  z-index: 210;
+  /* show-bg のフェードに合わせて出入り */
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.gallery.show-bg .gallery-dots { opacity: 1; pointer-events: auto; }
+.gallery-dots button {
+  width: 8px;
+  height: 8px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+.gallery-dots button.active {
+  background: var(--ink);
+  transform: scale(1.6);
+}
+
+/* ───── 横スクロールギャラリー（クリック展開） ───── */
+.gallery { position: fixed; inset: 0; z-index: 200; display: none; }
+.gallery.active { display: block; }
+/* 背景: 封筒/デッキをブラー＆暗転（フェードで切替） */
+.gallery-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(8, 8, 10, 0);
+  backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
+  transition: background 0.45s ease,
+              backdrop-filter 0.45s ease, -webkit-backdrop-filter 0.45s ease;
+}
+.gallery.show-bg .gallery-backdrop {
+  background: rgba(8, 8, 10, 0.62);
+  backdrop-filter: blur(11px); -webkit-backdrop-filter: blur(11px);
+}
+/* 横スクロール領域: 縦デッキと同じ“1つずつ”スナップ */
+.gallery-scroll {
+  position: absolute; inset: 0;
+  display: flex; align-items: center;
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+.gallery-scroll::-webkit-scrollbar { display: none; }
+/* 開封/収納のFLIP中はスナップを切る。項目をtransformで仮置きすると mandatory
+   スナップが“ずれた項目”を中央へ戻そうとしてスクロールが横に飛ぶ(カクッ)ため。 */
+.gallery.animating .gallery-scroll { scroll-snap-type: none; }
+.gallery-track {
+  display: flex; align-items: center;
+  gap: clamp(48px, 9vw, 120px);
+  /* 先頭/末尾のオブジェクトも中央へ来られるよう左右に余白（中身はpaddingをとって表示） */
+  padding-inline: 50vw;
+}
+.gallery-item {
+  flex: 0 0 auto;
+  scroll-snap-align: center;   /* 各オブジェクトを中央へスナップ */
+  scroll-snap-stop: always;    /* 一気に飛ばさず1つずつ */
+  will-change: transform;
+  perspective: 900px;          /* 子(.gi-tilt)の3D傾斜に奥行きを与える */
+}
+/* カーソル追従の3D傾斜（FLIPは.gallery-item側なので干渉しない） */
+.gi-tilt {
+  position: relative; display: block;
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+}
+.gallery-item img {
+  /* 実寸は openGallery でアスペクト比を見てJSが設定（短辺80% × 縮小率の枠にフィット） */
+  display: block;
+  user-select: none; -webkit-user-drag: none;
+}
+/* 反射ハイライト: ステッカーONのオブジェクトのみ。画像の形にマスクし、カーソルに追従 */
+.g-glare {
+  position: absolute; inset: 0; pointer-events: none;
+  /* 反射の半径を約2倍に（中間50%・外周124%）。透明度は高め（濃いめ） */
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%),
+    rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1) 60%, transparent 124%);
+  mix-blend-mode: screen;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  opacity: 0; transition: opacity 0.25s ease;
+}
+.gi-tilt.tilting .g-glare { opacity: 1; }
+.gallery-close {
+  position: fixed; top: 18px; right: 20px; z-index: 210;
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(20, 20, 24, 0.5); color: var(--ink);
+  font-size: 22px; line-height: 1; cursor: pointer; display: block;
+  /* show-bg のフェードに合わせてスケールで出入り（display切替だと瞬間表示になる） */
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: background 0.25s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s ease;
+}
+.gallery-close:hover { background: rgba(40, 40, 48, 0.7); transform: scale(1.08); }
+.gallery.show-bg .gallery-close { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+/* ───── デバッグエディタ ───── */
+#editor {
+  position: fixed; left: 16px; bottom: 16px; z-index: 100;
+  width: 320px; max-height: 88vh; overflow-y: auto;
+  background: rgba(20, 20, 24, 0.95); border: 1px solid #333; border-radius: 12px;
+  padding: 14px; font-family: -apple-system, system-ui, sans-serif;
+  font-size: 12px; color: #ddd; backdrop-filter: blur(6px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+#editor h2 { font-size: 13px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }
+#editor .row { margin-bottom: 10px; }
+#editor label { display: block; margin-bottom: 3px; opacity: 0.7; }
+#editor select, #editor input[type=text] {
+  width: 100%; background: #1c1c22; color: #eee; border: 1px solid #444;
+  border-radius: 6px; padding: 5px 7px; font-size: 12px;
+}
+#editor input[type=range] { width: 100%; }
+#editor .btn {
+  background: #2a2a33; color: #eee; border: 1px solid #444; border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; cursor: pointer; margin: 2px 2px 0 0;
+}
+#editor .btn:hover { background: #3a3a46; }
+#editor .btn.primary { background: #2f5fa3; border-color: #3f74c0; }
+#editor .btn.danger  { background: #7a2b2b; border-color: #a33; }
+#editor .objlist { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow: auto; }
+#editor .objitem { display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+  border: 1px solid #333; border-radius: 6px; cursor: pointer; }
+#editor .objitem.sel { border-color: #4fa3ff; background: #1d2733; }
+#editor .objitem img { width: 24px; height: 24px; object-fit: contain; background: #000; border-radius: 3px; }
+#editor .objitem span { flex: 1; }
+#editor .objmove { width: 22px; height: 22px; padding: 0; font-size: 11px; line-height: 1;
+  background: #2a2a33; color: #eee; border: 1px solid #444; border-radius: 4px; cursor: pointer; }
+#editor .objmove:hover { background: #3a3a46; }
+#editor .objmove:disabled { opacity: 0.3; cursor: default; }
+#editor .slider { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+#editor .slider label { flex: 0 0 42px; margin: 0; }
+#editor .slider span { width: 38px; text-align: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
+#editor .state-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+#editor .state-tabs button { flex: 1; }
+#editor .state-tabs button.on { background: #2f5fa3; border-color: #3f74c0; }
+#editor .hint { opacity: 0.5; font-size: 11px; line-height: 1.5; }
+#editor textarea { width: 100%; height: 80px; background: #111; color: #9f9;
+  border: 1px solid #333; border-radius: 6px; font-size: 11px; padding: 6px; margin-top: 6px; }
+#debugBadge { position: fixed; top: 10px; left: 12px; z-index: 100;
+  font: 11px system-ui; color: #4fa3ff; opacity: 0.75; }

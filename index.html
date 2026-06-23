@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>彼方への手紙</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <video class="bg-video" autoplay muted loop playsinline>
+    <source src="assets/bg.mp4" type="video/mp4">
+  </video>
+  <div class="deck" id="deck"></div>
+  <nav class="dots" id="dots" aria-label="手紙ナビゲーション"></nav>
+
+  <!-- スクリプトは読み込み順に依存（共有スコープ）。順序を変えないこと:
+       config（設定/データ/保存） → deck（カード/封筒） → gallery（横展開） → editor（?debug） -->
+  <script src="js/config.js"></script>
+  <script src="js/deck.js"></script>
+  <script src="js/gallery.js"></script>
+  <script src="js/editor.js"></script>
+</body>
+</html>
