@@ -146,12 +146,7 @@ body {
   transform: translateY(1px);
 }
 .layer-01.is-back { z-index: 0; } /* 15フレーム目以降は最背面 */
-.layer-shadow {                 /* 影レイヤー: 乗算合成で最上面 */
-  z-index: 5;
-  mix-blend-mode: multiply;
-  -webkit-mask: var(--mask-env) center / contain no-repeat;
-  mask: var(--mask-env) center / contain no-repeat;
-}
+/* 影は読み込み時に封筒レイヤーへ multiply 焼き込み済み（旧 .layer-shadow / mix-blend-mode は撤廃）。 */
 
 /* ───── 中身（手紙の要素） ───── */
 /* クリップは外側ラッパー(.contents-clip)に固定。内側(.contents)を上下に動かしても

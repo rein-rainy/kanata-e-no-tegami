@@ -26,7 +26,6 @@ WORKSHOPS.forEach((ws, i) => {
       <div class="contents-clip"><div class="contents"></div></div>
       <canvas class="layer-02 frame2" width="950" height="1080"></canvas>
       <canvas class="layer-01 frame1" width="950" height="1080"></canvas>
-      <canvas class="layer-shadow frame-shadow" width="950" height="1080"></canvas>
     </div>
     <div class="label">
       <div class="no">LETTER ${String(i + 1).padStart(2, '0')} / 09</div>
@@ -37,12 +36,10 @@ WORKSHOPS.forEach((ws, i) => {
 
   const envelopeEl = card.querySelector('.envelope');
   const contentsEl = card.querySelector('.contents');
-  const frameEl  = card.querySelector('.frame1');        // envelope01 (canvas)
-  const frameEl2 = card.querySelector('.frame2');        // envelope02 (canvas)
-  const frameElS = card.querySelector('.frame-shadow');  // envelope01_shadow (canvas)
+  const frameEl  = card.querySelector('.frame1');        // envelope01+影 (canvas)
+  const frameEl2 = card.querySelector('.frame2');        // envelope02+影 (canvas)
   const c1 = frameEl.getContext('2d');
   const c2 = frameEl2.getContext('2d');
-  const cS = frameElS.getContext('2d');
   let rafId = null;
 
   // 中身DOMを letterContents から再生成
@@ -106,11 +103,10 @@ WORKSHOPS.forEach((ws, i) => {
     c2d.clearRect(0, 0, w, h);
     c2d.drawImage(bm, 0, 0);
   }
-  // 封筒の表示を指定フレームに
+  // 封筒の表示を指定フレームに（影は焼き込み済みなので2レイヤーのみ）
   function setEnv(frame) {
-    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]);     // envelope01
-    drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]);     // envelope02
-    drawFrame(frameElS, cS, FRAME_BITMAPS.shadow[frame]); // envelope01_shadow
+    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]); // envelope01+影
+    drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]); // envelope02+影
     frameEl.classList.toggle('is-back', frame >= BACK_FRAME);
   }
   const redrawCurrent = () => setEnv(frameAt(env.v));
