@@ -8,8 +8,7 @@ const dotsNav = document.getElementById('dots');
 const cover = document.createElement('section');
 cover.className = 'card cover';
 cover.innerHTML = `
-  <h1>彼方への手紙</h1>
-  <p>マンデープロジェクト ポートフォリオ</p>
+  <img class="cover-title" src="assets/title.png" alt="彼方への手紙 ― マンデープロジェクト ポートフォリオ">
   <div class="scroll-hint">SCROLL ↓</div>`;
 deck.appendChild(cover);
 
