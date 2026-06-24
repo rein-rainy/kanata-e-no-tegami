@@ -231,23 +231,13 @@ body.debug .envelope.playing .content-obj { outline: none; } /* 再生中は枠�
   transition: filter 0.34s ease;
 }
 .card.gallery-dim .label { filter: drop-shadow(0 0 0 transparent); }
-.label .no {
-  font-size: 0.72rem;
-  letter-spacing: 0.3em;
-  color: #fff;
-  opacity: 1;
-}
-.label .date {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.18em;
-  color: #fff;
-  opacity: 1;
-}
-.label .title {
-  margin-top: 0.4rem;
-  font-size: clamp(1.1rem, 3.4vw, 1.6rem);
-  line-height: 1.5;
+/* 番号・日付・タイトルをまとめた画像（assets/Info）。元テキストと同じ中央寄せ・グロー。 */
+.label-img {
+  display: block;
+  width: min(86vw, 26rem);
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 /* ───── 右側ドットナビ ───── */

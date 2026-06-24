@@ -32,18 +32,16 @@ const WORKSHOPS = [
   { date: '6/22', title: 'ラジオ 放送日' },
 ];
 
-// envelope01 / envelope02 / envelope01_shadow はどれも30フレームのアニメーション
+// envelope01 / envelope02 はどちらも30フレームのアニメーション
+// 影はあらかじめ envelope01 の素材に焼き込み済みのため、実行時の影合成は不要。
 const framePath  = (n) => `assets/envelope01/${String(n).padStart(4, '0')}.webp`;
 const framePath2 = (n) => `assets/envelope02/${String(n).padStart(4, '0')}.webp`;
-const framePath3 = (n) => `assets/envelope01_shadow/${String(n).padStart(4, '0')}.webp`;
 
 // フレームを「一度だけデコードして保持」し、全封筒で共有する。
 // 旧方式（毎フレーム img.src を差し替え）は WebP の再デコードがメインスレッドで
 // 走って重かったため、事前デコード済み素材を canvas に drawImage する（deck.js）。
-// さらに影(envelope01_shadow)は読み込み時に各封筒レイヤーへ multiply で「焼き込み」、
-// 毎フレームの CSS mix-blend-mode 合成（モバイルGPUで高コスト）を撤廃する。
 // 原寸(950x1080)を多数RGBA保持すると重いので、表示サイズ×DPRに縮小して保持。
-const FRAME_BITMAPS = { e1: [], e2: [] }; // 影を焼き込んだ封筒レイヤー。index 1..TOTAL_FRAMES
+const FRAME_BITMAPS = { e1: [], e2: [] }; // 封筒レイヤー。index 1..TOTAL_FRAMES
 let framesReady = null; // deck.js が表示実寸を測ってから loadFrames() を一度だけ呼ぶ
 
 // maxW: デコード先の最大幅(px)。onFirst: 先頭フレームが描ける状態になった時に1度呼ぶ。
@@ -63,30 +61,12 @@ function loadFrames(maxW, onFirst) {
     img.onerror = () => resolve(null);
     img.src = path;
   });
-  // 封筒レイヤー(layer)に影(shadow)を multiply で焼き込んだ canvas を返す。
-  // 焼き込みは layer の不透明部分のみ（destination-in でマスク）→ 影のはみ出しを防ぐ。
-  // 各レイヤーへ同じ影を独立に掛けるので、表示される最前面レイヤーが常に正しく陰影される。
-  const bake = (layer, shadow) => {
-    const lw = (layer && (layer.naturalWidth || layer.width)) || w;
-    const lh = (layer && (layer.naturalHeight || layer.height)) || h;
-    const cv = document.createElement('canvas'); cv.width = lw; cv.height = lh;
-    const x = cv.getContext('2d');
-    if (layer) x.drawImage(layer, 0, 0, lw, lh);
-    if (layer && shadow) {
-      x.globalCompositeOperation = 'multiply';
-      x.drawImage(shadow, 0, 0, lw, lh);
-      x.globalCompositeOperation = 'destination-in'; // layer の形にクリップし直す
-      x.drawImage(layer, 0, 0, lw, lh);
-      x.globalCompositeOperation = 'source-over';
-    }
-    return cv;
-  };
   const loadFrame = async (i) => {
-    const [e1, e2, sh] = await Promise.all([
-      decode(framePath(i)), decode(framePath2(i)), decode(framePath3(i)),
+    const [e1, e2] = await Promise.all([
+      decode(framePath(i)), decode(framePath2(i)),
     ]);
-    FRAME_BITMAPS.e1[i] = bake(e1, sh); // 影は焼き込み後に破棄（GC）
-    FRAME_BITMAPS.e2[i] = bake(e2, sh);
+    FRAME_BITMAPS.e1[i] = e1;
+    FRAME_BITMAPS.e2[i] = e2;
   };
   framesReady = (async () => {
     await loadFrame(1); // 先頭フレームを最優先 → 初期表示(閉じた状態)を即描画

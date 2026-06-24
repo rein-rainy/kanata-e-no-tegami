@@ -28,16 +28,15 @@ WORKSHOPS.forEach((ws, i) => {
       <canvas class="layer-01 frame1" width="950" height="1080"></canvas>
     </div>
     <div class="label">
-      <div class="no">LETTER ${String(i + 1).padStart(2, '0')} / 09</div>
-      <div class="date">${ws.date}</div>
-      <div class="title">${ws.title}</div>
+      <img class="label-img" src="assets/Info/Info-${i + 1}.png"
+           alt="LETTER ${String(i + 1).padStart(2, '0')} / 09　${ws.date}　${ws.title}">
     </div>`;
   deck.appendChild(card);
 
   const envelopeEl = card.querySelector('.envelope');
   const contentsEl = card.querySelector('.contents');
-  const frameEl  = card.querySelector('.frame1');        // envelope01+影 (canvas)
-  const frameEl2 = card.querySelector('.frame2');        // envelope02+影 (canvas)
+  const frameEl  = card.querySelector('.frame1');        // envelope01 (canvas, 影は素材に焼き込み済み)
+  const frameEl2 = card.querySelector('.frame2');        // envelope02 (canvas)
   const c1 = frameEl.getContext('2d');
   const c2 = frameEl2.getContext('2d');
   let rafId = null;
@@ -105,8 +104,8 @@ WORKSHOPS.forEach((ws, i) => {
   }
   // 封筒の表示を指定フレームに（影は焼き込み済みなので2レイヤーのみ）
   function setEnv(frame) {
-    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]); // envelope01+影
-    drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]); // envelope02+影
+    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]); // envelope01
+    drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]); // envelope02
     frameEl.classList.toggle('is-back', frame >= BACK_FRAME);
   }
   const redrawCurrent = () => setEnv(frameAt(env.v));
