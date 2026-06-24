@@ -158,29 +158,36 @@ function itemUnderCursor() {
            tiltMouse.y >= r.top  && tiltMouse.y <= r.bottom;
   }) || null;
 }
-function tiltFrame() {
-  tiltRaf = false;
-  if (!galleryOpen || galleryBusy || !tiltMouse) return;
-  const it = itemUnderCursor();
+// px,py は -1〜1（中央=0）。マウス・ジャイロ共通の傾き適用。
+function applyTiltTo(it, px, py) {
   const t = it && it.querySelector('.gi-tilt');
-  // カーソルがどのオブジェクトにも触れていなければ平らに戻す。
-  if (!t) { if (tiltEl) { clearTilt(tiltEl); tiltEl = null; } return; }
-  const r = it.getBoundingClientRect();
+  if (!t) return;
   if (tiltEl && tiltEl !== t) clearTilt(tiltEl);
   tiltEl = t;
-  const px = Math.max(-1, Math.min(1, (tiltMouse.x - (r.left + r.width / 2)) / (r.width / 2)));
-  const py = Math.max(-1, Math.min(1, (tiltMouse.y - (r.top + r.height / 2)) / (r.height / 2)));
+  px = Math.max(-1, Math.min(1, px));
+  py = Math.max(-1, Math.min(1, py));
   // デバッグのgallery.scaleが小さいほど傾きを強める（1が基準、上限あり）
   const gs = parseFloat(it.dataset.galScale) || 1;
   const boost = Math.min(TILT_BOOST_MAX, Math.max(1, 1 / gs));
   const tiltMax = TILT_MAX * boost;
   t.style.transform = `rotateX(${(-py * tiltMax).toFixed(2)}deg) rotateY(${(px * tiltMax).toFixed(2)}deg)`;
   const glare = t.querySelector('.g-glare');
-  if (glare) { // 反射ハイライトをカーソル位置へ
+  if (glare) { // 反射ハイライトを傾き方向へ
     glare.style.setProperty('--gx', ((px * 0.5 + 0.5) * 100).toFixed(1) + '%');
     glare.style.setProperty('--gy', ((py * 0.5 + 0.5) * 100).toFixed(1) + '%');
   }
   t.classList.add('tilting');
+}
+function tiltFrame() {
+  tiltRaf = false;
+  if (!galleryOpen || galleryBusy || !tiltMouse) return;
+  const it = itemUnderCursor();
+  // カーソルがどのオブジェクトにも触れていなければ平らに戻す。
+  if (!it || !it.querySelector('.gi-tilt')) { if (tiltEl) { clearTilt(tiltEl); tiltEl = null; } return; }
+  const r = it.getBoundingClientRect();
+  const px = (tiltMouse.x - (r.left + r.width / 2)) / (r.width / 2);
+  const py = (tiltMouse.y - (r.top + r.height / 2)) / (r.height / 2);
+  applyTiltTo(it, px, py);
 }
 galleryScroll.addEventListener('mousemove', (e) => {
   tiltMouse = { x: e.clientX, y: e.clientY };
@@ -189,6 +196,36 @@ galleryScroll.addEventListener('mousemove', (e) => {
 galleryScroll.addEventListener('mouseleave', () => {
   tiltMouse = null; clearTilt(tiltEl); tiltEl = null;
 });
+
+// ── スマホ: 端末のジャイロ(傾き)で中央のオブジェクトを傾ける ──
+const GYRO_RANGE = 30;        // この傾き(deg)で最大に到達
+let gyroOn = false, gyroBase = null, gyroData = null, gyroRaf = false;
+function gyroFrame() {
+  gyroRaf = false;
+  if (!galleryOpen || galleryBusy || !gyroData) return;
+  const it = galleryTrack.children[nearestCenterIndex()];
+  if (!it || !it.querySelector('.gi-tilt')) return;
+  if (!gyroBase) gyroBase = { beta: gyroData.beta, gamma: gyroData.gamma }; // 開いた時点の姿勢を基準に
+  const px = (gyroData.gamma - gyroBase.gamma) / GYRO_RANGE; // 左右の傾き
+  const py = (gyroData.beta  - gyroBase.beta)  / GYRO_RANGE; // 前後の傾き
+  applyTiltTo(it, px, py);
+}
+function onDeviceOrientation(e) {
+  if (e.gamma == null || e.beta == null) return;
+  gyroData = { beta: e.beta, gamma: e.gamma };
+  if (!gyroRaf) { gyroRaf = true; requestAnimationFrame(gyroFrame); }
+}
+// 端末傾きセンサーを有効化（iOSは要ユーザー操作での許可）。封筒タップ等から呼ぶ。
+function enableGyro() {
+  if (gyroOn) return;
+  const DOE = window.DeviceOrientationEvent;
+  if (!DOE) return;
+  const attach = () => { gyroOn = true; window.addEventListener('deviceorientation', onDeviceOrientation); };
+  if (typeof DOE.requestPermission === 'function') {
+    DOE.requestPermission().then((res) => { if (res === 'granted') attach(); }).catch(() => {});
+  } else { attach(); }
+}
+window.enableGyro = enableGyro;
 // 自由スクロール(トラックパッド等)でも中央番号を同期。スクロール中は一旦傾きを解除。
 let galScrollSettle;
 galleryScroll.addEventListener('scroll', () => {
@@ -210,6 +247,7 @@ function openGallery(i) {
     return;
   }
   galleryBusy = true; galleryOpen = true; galleryLetter = i;
+  gyroBase = null; // 開いた時点の端末姿勢を傾きの基準に取り直す
   gallery.classList.add('animating'); // FLIP中はスクロールスナップを切る
   C.cardEl.classList.add('gallery-dim'); // 上昇に同期してカードのグローをフェードアウト
   C.holdOpen(); // 展開中は封筒を開いたまま保持（ホバーが外れても閉じない）

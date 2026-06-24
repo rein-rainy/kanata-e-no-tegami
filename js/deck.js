@@ -208,6 +208,7 @@ WORKSHOPS.forEach((ws, i) => {
     } else {
       // スマホ等(ホバー非対応): 1タップで開封 / 開封済みなら次タップで展開
       envelopeEl.addEventListener('click', () => {
+        if (window.enableGyro) window.enableGyro(); // タップ操作の中でジャイロ許可を要求(iOS)
         if (galleryOpen) { closeGallery(); return; }
         if (env.target === 1) openGallery(i);
         else open();
