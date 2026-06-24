@@ -16,8 +16,9 @@ html, body { height: 100%; }
 body {
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
   color: var(--ink);
-  /* 背景は bg.mp4（.bg-video）が担当。動画の下地として黒を敷く */
-  background: #000;
+  /* 背景は bg.mp4（.bg-video）が担当。動画が読み込まれるまでは
+     bg.png をフォールバックとして表示（下地の黒で隙間を埋める） */
+  background: #000 url(../assets/bg.png) center / cover no-repeat fixed;
   overflow: hidden;            /* スクロールは deck が担当 */
 }
 
