@@ -307,7 +307,7 @@ const BAKED_CONTENTS = {
       }
     },
     {
-      "src": "assets/contents/embed10.webp",
+      "src": "assets/contents/embed10.svg",
       "init": {
         "x": 62.92977945564769,
         "y": 64.74899147123041,
@@ -384,7 +384,7 @@ const BAKED_CONTENTS = {
       }
     },
     {
-      "src": "assets/contents/embed12.webp",
+      "src": "assets/contents/embed12.svg",
       "init": {
         "x": 67.1699663353639,
         "y": 59.16794754283296,
@@ -431,7 +431,7 @@ const BAKED_CONTENTS = {
       }
     },
     {
-      "src": "assets/contents/embed14.webp",
+      "src": "assets/contents/embed14.svg",
       "init": {
         "x": 26.58504328310356,
         "y": 62.640485087781144,

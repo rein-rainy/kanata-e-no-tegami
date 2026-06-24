@@ -334,6 +334,16 @@ function initEditor() {
     });
   }
 
+  // data:image/svg+xml の data URL を SVGテキストのBlobに復元（再エンコードしない）
+  function svgDataUrlToBlob(dataUrl) {
+    const comma = dataUrl.indexOf(',');
+    const meta = dataUrl.slice(5, comma); // "image/svg+xml..." or with ;base64
+    const data = dataUrl.slice(comma + 1);
+    const isBase64 = /;base64/i.test(meta);
+    const text = isBase64 ? atob(data) : decodeURIComponent(data);
+    return new Blob([text], { type: 'image/svg+xml' });
+  }
+
   $('#ed-bake').addEventListener('click', async () => {
     const btn = $('#ed-bake');
     const orig = btn.textContent;
@@ -358,9 +368,12 @@ function initEditor() {
           if (typeof o.src !== 'string' || !o.src.startsWith('data:')) continue; // 既にパス参照
           if (seen.has(o.src)) { o.src = seen.get(o.src); continue; }
           counter++;
-          const name = `embed${String(counter).padStart(2, '0')}.webp`;
+          // SVGはwebpに変換せず、SVGのまま書き出す
+          const isSvg = /^data:image\/svg\+xml/i.test(o.src);
+          const ext = isSvg ? 'svg' : 'webp';
+          const name = `embed${String(counter).padStart(2, '0')}.${ext}`;
           setLabel(`書き出し中… ${name}`);
-          const blob = await dataUrlToWebp(o.src);
+          const blob = isSvg ? svgDataUrlToBlob(o.src) : await dataUrlToWebp(o.src);
           const fh = await dir.getFileHandle(name, { create: true });
           const w = await fh.createWritable();
           await w.write(blob); await w.close();
