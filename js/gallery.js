@@ -158,8 +158,8 @@ function itemUnderCursor() {
            tiltMouse.y >= r.top  && tiltMouse.y <= r.bottom;
   }) || null;
 }
-// px,py は -1〜1（中央=0）。マウス・ジャイロ共通の傾き適用。
-function applyTiltTo(it, px, py) {
+// px,py は -1〜1（中央=0）。マウス・ジャイロ共通の傾き適用。maxMul=傾き上限の倍率。
+function applyTiltTo(it, px, py, maxMul = 1) {
   const t = it && it.querySelector('.gi-tilt');
   if (!t) return;
   if (tiltEl && tiltEl !== t) clearTilt(tiltEl);
@@ -169,7 +169,7 @@ function applyTiltTo(it, px, py) {
   // デバッグのgallery.scaleが小さいほど傾きを強める（1が基準、上限あり）
   const gs = parseFloat(it.dataset.galScale) || 1;
   const boost = Math.min(TILT_BOOST_MAX, Math.max(1, 1 / gs));
-  const tiltMax = TILT_MAX * boost;
+  const tiltMax = TILT_MAX * boost * maxMul;
   t.style.transform = `rotateX(${(-py * tiltMax).toFixed(2)}deg) rotateY(${(px * tiltMax).toFixed(2)}deg)`;
   const glare = t.querySelector('.g-glare');
   if (glare) { // 反射ハイライトを傾き方向へ
@@ -198,7 +198,7 @@ galleryScroll.addEventListener('mouseleave', () => {
 });
 
 // ── スマホ: 端末のジャイロ(傾き)で中央のオブジェクトを傾ける ──
-const GYRO_RANGE = 10;        // この傾き(deg)で最大に到達（小さいほど傾き量が大きい）
+const GYRO_RANGE = 15;        // この傾き(deg)で最大に到達（小さいほど傾き量が大きい）
 let gyroOn = false, gyroBase = null, gyroData = null, gyroRaf = false;
 function gyroFrame() {
   gyroRaf = false;
@@ -208,7 +208,7 @@ function gyroFrame() {
   if (!gyroBase) gyroBase = { beta: gyroData.beta, gamma: gyroData.gamma }; // 開いた時点の姿勢を基準に
   const px = -(gyroData.gamma - gyroBase.gamma) / GYRO_RANGE; // 左右の傾き（ジャイロと逆方向）
   const py = -(gyroData.beta  - gyroBase.beta)  / GYRO_RANGE; // 前後の傾き（ジャイロと逆方向）
-  applyTiltTo(it, px, py);
+  applyTiltTo(it, px, py, 3); // スマホは傾き上限を3倍に
 }
 function onDeviceOrientation(e) {
   if (e.gamma == null || e.beta == null) return;
