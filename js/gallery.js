@@ -198,7 +198,7 @@ galleryScroll.addEventListener('mouseleave', () => {
 });
 
 // ── スマホ: 端末のジャイロ(傾き)で中央のオブジェクトを傾ける ──
-const GYRO_RANGE = 30;        // この傾き(deg)で最大に到達
+const GYRO_RANGE = 10;        // この傾き(deg)で最大に到達（小さいほど傾き量が大きい）
 let gyroOn = false, gyroBase = null, gyroData = null, gyroRaf = false;
 function gyroFrame() {
   gyroRaf = false;
@@ -206,8 +206,8 @@ function gyroFrame() {
   const it = galleryTrack.children[nearestCenterIndex()];
   if (!it || !it.querySelector('.gi-tilt')) return;
   if (!gyroBase) gyroBase = { beta: gyroData.beta, gamma: gyroData.gamma }; // 開いた時点の姿勢を基準に
-  const px = (gyroData.gamma - gyroBase.gamma) / GYRO_RANGE; // 左右の傾き
-  const py = (gyroData.beta  - gyroBase.beta)  / GYRO_RANGE; // 前後の傾き
+  const px = -(gyroData.gamma - gyroBase.gamma) / GYRO_RANGE; // 左右の傾き（ジャイロと逆方向）
+  const py = -(gyroData.beta  - gyroBase.beta)  / GYRO_RANGE; // 前後の傾き（ジャイロと逆方向）
   applyTiltTo(it, px, py);
 }
 function onDeviceOrientation(e) {
