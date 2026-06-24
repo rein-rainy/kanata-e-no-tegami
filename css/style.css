@@ -80,6 +80,10 @@ body {
   height: auto;
   display: block;
 }
+/* スマホ（縦長・狭幅）ではタイトルを大きめに */
+@media (max-width: 600px) {
+  .cover-title { width: 78vw; }
+}
 .scroll-hint {
   margin-top: 2.5rem;
   font-size: 0.72rem;
