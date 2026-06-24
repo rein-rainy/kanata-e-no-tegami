@@ -198,7 +198,7 @@ galleryScroll.addEventListener('mouseleave', () => {
 });
 
 // ── スマホ: 端末のジャイロ(傾き)で中央のオブジェクトを傾ける ──
-const GYRO_RANGE = 15;        // この傾き(deg)で最大に到達（小さいほど傾き量が大きい）
+const GYRO_RANGE = 40;        // この傾き(deg)で最大に到達（小さいほど傾き量が大きい）
 let gyroOn = false, gyroBase = null, gyroData = null, gyroRaf = false;
 function gyroFrame() {
   gyroRaf = false;
