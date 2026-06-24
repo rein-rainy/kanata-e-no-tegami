@@ -7,14 +7,39 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <video class="bg-video" autoplay muted loop playsinline>
+  <video class="bg-video" id="bgVideo" autoplay muted loop playsinline>
     <source src="assets/bg.mp4" type="video/mp4">
   </video>
+  <div class="loading" id="loading">
+    <div class="loading-dots" aria-label="読み込み中">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
   <div class="deck" id="deck"></div>
   <nav class="dots" id="dots" aria-label="手紙ナビゲーション"></nav>
 
   <!-- スクリプトは読み込み順に依存（共有スコープ）。順序を変えないこと:
        config（設定/データ/保存） → deck（カード/封筒） → gallery（横展開） → editor（?debug） -->
+  <!-- 背景動画が再生可能になったらローディングオーバーレイを消す -->
+  <script>
+    (function () {
+      var video = document.getElementById('bgVideo');
+      var loading = document.getElementById('loading');
+      if (!video || !loading) return;
+      var hidden = false;
+      function hide() {
+        if (hidden) return;
+        hidden = true;
+        loading.classList.add('is-hidden');
+      }
+      // 再生開始（描画開始）または十分にバッファ済みで消す
+      video.addEventListener('playing', hide);
+      video.addEventListener('canplaythrough', hide);
+      if (video.readyState >= 3) hide();   // 既に再生可能なら即時
+      // 念のためのフォールバック（読み込みが遅すぎる場合）
+      window.setTimeout(hide, 8000);
+    })();
+  </script>
   <script src="js/config.js"></script>
   <script src="js/deck.js"></script>
   <script src="js/gallery.js"></script>
