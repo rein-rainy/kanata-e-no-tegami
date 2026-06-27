@@ -222,6 +222,7 @@ body.debug .contents-clip { clip-path: none; }
   position: relative;
   width: 100%;
   aspect-ratio: 918 / 765;
+  isolation: isolate; /* 内部のz-index(1/2/3)を閉じ込め、ギャラリーの反射を前面に出す */
 }
 .cd-stack img {
   position: absolute; inset: 0;
@@ -235,7 +236,7 @@ body.debug .contents-clip { clip-path: none; }
   pointer-events: auto; cursor: pointer;
   transform-origin: 50% 50%;
 }
-.cd-stack .cd-base.spinning { animation: cd-spin 0.7s linear infinite; }
+.cd-stack .cd-base.spinning { animation: cd-spin 0.5s linear infinite; }
 @keyframes cd-spin { to { transform: rotate(360deg); } }
 /* CD-02: CD-03 の形でクリップ + オーバーレイ合成 */
 .cd-stack .cd-overlay {

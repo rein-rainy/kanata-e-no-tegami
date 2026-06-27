@@ -459,6 +459,7 @@ const BAKED_CONTENTS = {
     {
       "src": "assets/contents/CD-03.png",
       "cdStack": true,
+      "sticker": true,
       "init": {
         "x": 58.72241689553935,
         "y": 70.1945767324327,

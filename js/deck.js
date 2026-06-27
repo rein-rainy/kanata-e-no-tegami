@@ -72,6 +72,17 @@ WORKSHOPS.forEach((ws, i) => {
           else audio.pause();
         });
         el.appendChild(stack);
+        // ステッカー風ハイライト: CD-01/02/03 それぞれの形でマスクし、各レイヤー直上に重ねる
+        if (obj.sticker) {
+          [['CD-03.png', 1], ['CD-02.png', 2], ['CD-01.png', 3]].forEach(([file, z]) => {
+            const sh = document.createElement('div');
+            sh.className = 'shine';
+            sh.style.zIndex = z;
+            sh.style.webkitMaskImage = `url("assets/contents/${file}")`;
+            sh.style.maskImage = `url("assets/contents/${file}")`;
+            stack.appendChild(sh);
+          });
+        }
         applyState(el, obj.init);
         contentsEl.appendChild(el);
         return;
@@ -92,8 +103,9 @@ WORKSHOPS.forEach((ws, i) => {
   }
   // ステッカーのハイライト位置を進捗pで更新（斜めに横切る）
   function applyShine(el, p) {
-    const sh = el.querySelector('.shine');
-    if (sh) sh.style.backgroundPositionX = (130 - p * 160) + '%';
+    el.querySelectorAll('.shine').forEach((sh) => {
+      sh.style.backgroundPositionX = (130 - p * 160) + '%';
+    });
   }
   // lin: 0=初期, 1=最終 の線形進捗。X/Y 同じイーズインアウト。
   // 位置は init→ctrl→final の2次ベジエ曲線、回転/拡縮は直線補間。

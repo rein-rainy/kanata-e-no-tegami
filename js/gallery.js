@@ -175,11 +175,10 @@ function applyTiltTo(it, px, py, maxMul = 1) {
   const boost = Math.min(TILT_BOOST_MAX, Math.max(1, 1 / gs));
   const tiltMax = TILT_MAX * boost * maxMul;
   t.style.transform = `rotateX(${(-py * tiltMax).toFixed(2)}deg) rotateY(${(px * tiltMax).toFixed(2)}deg)`;
-  const glare = t.querySelector('.g-glare');
-  if (glare) { // 反射ハイライトを傾き方向へ
+  t.querySelectorAll('.g-glare').forEach((glare) => { // 反射ハイライトを傾き方向へ
     glare.style.setProperty('--gx', ((px * 0.5 + 0.5) * 100).toFixed(1) + '%');
     glare.style.setProperty('--gy', ((py * 0.5 + 0.5) * 100).toFixed(1) + '%');
-  }
+  });
   t.classList.add('tilting');
 }
 function tiltFrame() {
@@ -267,10 +266,17 @@ function openGallery(i) {
     it.dataset.galScale = galScale(o); // 傾きboostの基準（1が基準、小さいほど強める）
     const tilt = document.createElement('div'); tilt.className = 'gi-tilt';
     if (o.sticker) { // 反射はステッカーONのみ。imgは後で gi-tilt の先頭に入れるので glare が上に乗る
-      const glare = document.createElement('div'); glare.className = 'g-glare';
-      glare.style.webkitMaskImage = `url("${o.src}")`;
-      glare.style.maskImage = `url("${o.src}")`;
-      tilt.appendChild(glare);
+      // CD合成は CD-01/02/03 それぞれの形で反射を出す。それ以外は素材1枚。
+      const masks = o.cdStack
+        ? ['assets/contents/CD-03.png', 'assets/contents/CD-02.png', 'assets/contents/CD-01.png']
+        : [o.src];
+      masks.forEach((m, gi) => {
+        const glare = document.createElement('div'); glare.className = 'g-glare';
+        glare.style.zIndex = gi + 1; // .cd-stack(isolate)より前面
+        glare.style.webkitMaskImage = `url("${m}")`;
+        glare.style.maskImage = `url("${m}")`;
+        tilt.appendChild(glare);
+      });
     }
     it.appendChild(tilt);
     galleryTrack.appendChild(it);
