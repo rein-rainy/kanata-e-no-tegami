@@ -156,6 +156,12 @@ body {
   filter: blur(56px);
   pointer-events: none;
   transition: opacity 0.34s ease; /* ギャラリー移行時のフェード用 */
+  /* iOS Safari の慣性スクロール中、blur フィルターがタイル境界で切れて
+     グローが途切れる不具合への対策。独立した合成レイヤーへ昇格させ、
+     スクロールのタイリングと無関係に丸ごとラスタライズさせる。 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .envelope > img,
