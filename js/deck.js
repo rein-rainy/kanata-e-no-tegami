@@ -144,12 +144,18 @@ WORKSHOPS.forEach((ws, i) => {
     c2d.drawImage(bm, 0, 0);
   }
   // 封筒の表示を指定フレームに（影は焼き込み済みなので2レイヤーのみ）
-  function setEnv(frame) {
+  let lastFrame = -1; // 直近に描いた封筒フレーム。同フレームの再描画(=無駄なGPU転送)を避ける
+  // force=true: デコード完了後の再描画など、同フレームでも必ず描き直したい場合
+  function setEnv(frame, force = false) {
+    // 封筒が静止していて中身だけ動いている間、毎フレームの再アップロードを止める
+    // （スマホで開封後に中身が動く区間のカクつき対策。PCは元々軽いので影響なし）
+    if (frame === lastFrame && !force) return;
+    lastFrame = frame;
     drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]); // envelope01
     drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]); // envelope02
     frameEl.classList.toggle('is-back', frame >= BACK_FRAME);
   }
-  const redrawCurrent = () => setEnv(frameAt(env.v));
+  const redrawCurrent = () => setEnv(frameAt(env.v), true);
   const frameAt = (p) => Math.min(TOTAL_FRAMES, Math.max(1,
     Math.round(1 + p * (TOTAL_FRAMES - 1))));
 
@@ -229,7 +235,7 @@ WORKSHOPS.forEach((ws, i) => {
     env.v = env.target = 0; env.delayLeft = 0;
     con.v = con.target = 0; con.delayLeft = 0;
     shn.v = shn.target = 0; shn.delayLeft = 0;
-    setEnv(1); // フレーム1(閉じた状態)を描画。is-back もここで解除される
+    setEnv(1, true); // フレーム1(閉じた状態)を描画。is-back もここで解除される
     renderContents();
     applyContents(0);
   }
