@@ -72,9 +72,9 @@ WORKSHOPS.forEach((ws, i) => {
           else audio.pause();
         });
         el.appendChild(stack);
-        // ステッカー風ハイライト: CD-01/02/03 それぞれの形でマスクし、各レイヤー直上に重ねる
+        // ステッカー風ハイライト: CD-01/03 の形でマスクし、各レイヤー直上に重ねる（CD-02は無し）
         if (obj.sticker) {
-          [['CD-03.png', 1], ['CD-02.png', 2], ['CD-01.png', 3]].forEach(([file, z]) => {
+          [['CD-03.png', 1], ['CD-01.png', 3]].forEach(([file, z]) => {
             const sh = document.createElement('div');
             sh.className = 'shine';
             sh.style.zIndex = z;

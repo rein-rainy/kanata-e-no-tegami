@@ -268,11 +268,11 @@ function openGallery(i) {
     if (o.sticker) { // 反射はステッカーONのみ。imgは後で gi-tilt の先頭に入れるので glare が上に乗る
       // CD合成は CD-01/02/03 それぞれの形で反射を出す。それ以外は素材1枚。
       const masks = o.cdStack
-        ? ['assets/contents/CD-03.png', 'assets/contents/CD-02.png', 'assets/contents/CD-01.png']
-        : [o.src];
-      masks.forEach((m, gi) => {
+        ? [['assets/contents/CD-03.png', 1], ['assets/contents/CD-01.png', 3]] // CD-02は光沢無し
+        : [[o.src, 1]];
+      masks.forEach(([m, z]) => {
         const glare = document.createElement('div'); glare.className = 'g-glare';
-        glare.style.zIndex = gi + 1; // .cd-stack(isolate)より前面
+        glare.style.zIndex = z; // .cd-stack(isolate)より前面
         glare.style.webkitMaskImage = `url("${m}")`;
         glare.style.maskImage = `url("${m}")`;
         tilt.appendChild(glare);
