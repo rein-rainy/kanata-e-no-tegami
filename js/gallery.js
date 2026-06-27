@@ -21,6 +21,8 @@ const galleryCloseBtn = gallery.querySelector('.gallery-close');
 
 let galleryOpen = false, galleryLetter = -1, galleryBusy = false;
 
+// 移動・サイズ対象の視覚ノード。CD合成は .cd-stack をひとかたまりで扱う
+const galVisual = (root) => root && (root.querySelector('.cd-stack') || root.querySelector('img'));
 // gallery 設定（並び順・スケール）の取得
 const galOrder = (o, idx) => (o.gallery && Number.isFinite(o.gallery.order)) ? o.gallery.order : idx;
 const galScale = (o) => (o.gallery && o.gallery.scale > 0) ? o.gallery.scale : 1;
@@ -109,14 +111,16 @@ function sizeGalleryItems(ordered) {
   ordered.forEach(({ o }, k) => {
     const it = galleryTrack.children[k];
     if (!it) return;
-    const img = it.querySelector('img');
-    if (!img) return;
+    const node = galVisual(it);
+    if (!node) return;
+    // アスペクト比は実画像から（.cd-stack の場合は内側の img を参照）
+    const arImg = node.matches('img') ? node : node.querySelector('img');
     const b = box * galScale(o);
-    const ar = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : 1;
+    const ar = (arImg && arImg.naturalWidth && arImg.naturalHeight) ? arImg.naturalWidth / arImg.naturalHeight : 1;
     const w = ar >= 1 ? b : b * ar;
     const h = ar >= 1 ? b / ar : b;
-    img.style.width = w + 'px';
-    img.style.height = h + 'px';
+    node.style.width = w + 'px';
+    node.style.height = h + 'px';
   });
 }
 // content-obj の「封筒内・最終(open)位置」の rect を config から算出（閉じる時の戻り先）
@@ -287,7 +291,7 @@ function openGallery(i) {
     const recs = ordered.map(({ idx }, k) => {
       const galItem = galleryTrack.children[k];
       const cObj = srcEls[idx];
-      const img = cObj && cObj.querySelector('img');
+      const img = galVisual(cObj);
       if (!galItem || !cObj || !img) return null;
       const r = cObj.getBoundingClientRect();
       const m = new DOMMatrix(getComputedStyle(cObj).transform);
@@ -337,6 +341,11 @@ function closeGallery() {
   galleryBusy = true;
   gallery.classList.add('animating'); // FLIP中はスクロールスナップを切る
   clearTilt(tiltEl); tiltEl = null; tiltMouse = null;
+  // CD回転・音源を停止（ギャラリーを離れる）
+  document.querySelectorAll('.cd-base.spinning').forEach((b) => {
+    b.classList.remove('spinning');
+    if (b._cdAudio) b._cdAudio.pause();
+  });
   const C = ctx[galleryLetter];
   const objs = letterContents[galleryLetter] || [];
   const ordered = galSorted(objs);
@@ -347,7 +356,7 @@ function closeGallery() {
   const recs = ordered.map(({ idx }, k) => {
     const galItem = galleryTrack.children[k];
     const cObj = C ? C.contentsEl.children[idx] : null;
-    const img = galItem && galItem.querySelector('img');
+    const img = galVisual(galItem);
     if (!galItem || !cObj || !img) return null;
     const fr = contentFinalRect(C, objs[idx]);          // 封筒内・最終位置
     const t = galItem.getBoundingClientRect();          // 今のスロット（中央・identity）

@@ -46,6 +46,36 @@ WORKSHOPS.forEach((ws, i) => {
     (letterContents[i] || []).forEach((obj) => {
       const el = document.createElement('div');
       el.className = 'content-obj';
+      // CD 3レイヤー合成: CD-03(最背面/回転) → CD-02(CD-03でクリップ+オーバーレイ) → CD-01(最前面)
+      if (obj.cdStack || /embed15/.test(obj.src)) {
+        const stack = document.createElement('div');
+        stack.className = 'cd-stack';
+        stack.innerHTML =
+          '<img class="cd-base" src="assets/contents/CD-03.png" alt="">' +
+          '<img class="cd-overlay" src="assets/contents/CD-02.png" alt="">' +
+          '<img class="cd-top" src="assets/contents/CD-01.png" alt="">';
+        // CD-02 を CD-03 の形でクリッピング
+        const ov = stack.querySelector('.cd-overlay');
+        ov.style.webkitMaskImage = 'url("assets/contents/CD-03.png")';
+        ov.style.maskImage = 'url("assets/contents/CD-03.png")';
+        // CD-03(最背面)をクリックで高速回転トグル。ギャラリービューの時のみ有効。
+        // 回転中は音源を再生し、クリックで停止＝一時停止（位置は保持）。
+        const base = stack.querySelector('.cd-base');
+        const audio = new Audio('assets/contents/cd-track.mp3');
+        audio.preload = 'none';
+        base._cdAudio = audio;
+        base.addEventListener('click', (e) => {
+          if (!galleryOpen) return;
+          e.stopPropagation();
+          const spinning = base.classList.toggle('spinning');
+          if (spinning) audio.play().catch(() => {});
+          else audio.pause();
+        });
+        el.appendChild(stack);
+        applyState(el, obj.init);
+        contentsEl.appendChild(el);
+        return;
+      }
       el.innerHTML = `<img src="${obj.src}" alt="">`;
       if (obj.sticker) {
         // ステッカー風ハイライト（画像の形にマスク）。

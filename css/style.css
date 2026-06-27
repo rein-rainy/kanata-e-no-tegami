@@ -216,6 +216,37 @@ body.debug .contents-clip { clip-path: none; }
   width: 100%; height: auto; display: block;
   user-select: none; -webkit-user-drag: none;
 }
+/* ───── CD 3レイヤー合成（embed15 を置き換え） ───── */
+/* 素材は 918×765。.cd-stack が描画ボックス、内側3枚を重ねる */
+.cd-stack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 918 / 765;
+}
+.cd-stack img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block; pointer-events: none;
+  -webkit-user-drag: none; user-select: none;
+}
+/* CD-03: 最背面・クリックで回転トグル */
+.cd-stack .cd-base {
+  z-index: 1;
+  pointer-events: auto; cursor: pointer;
+  transform-origin: 50% 50%;
+}
+.cd-stack .cd-base.spinning { animation: cd-spin 0.7s linear infinite; }
+@keyframes cd-spin { to { transform: rotate(360deg); } }
+/* CD-02: CD-03 の形でクリップ + オーバーレイ合成 */
+.cd-stack .cd-overlay {
+  z-index: 2;
+  mix-blend-mode: overlay;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+/* CD-01: 最前面 */
+.cd-stack .cd-top { z-index: 3; }
+
 /* ステッカー風ハイライト: 斜めグラデーション(透明→白半透明→透明)を画像形にマスク */
 .content-obj .shine {
   position: absolute; inset: 0; pointer-events: none;

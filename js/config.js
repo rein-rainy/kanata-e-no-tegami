@@ -457,7 +457,8 @@ const BAKED_CONTENTS = {
   ],
   "8": [
     {
-      "src": "assets/contents/embed15.webp",
+      "src": "assets/contents/CD-03.png",
+      "cdStack": true,
       "init": {
         "x": 58.72241689553935,
         "y": 70.1945767324327,
@@ -474,7 +475,6 @@ const BAKED_CONTENTS = {
         "x": 57.6696025507466,
         "y": 44.1296530275051
       },
-      "sticker": true,
       "gallery": {
         "order": 0,
         "scale": 0.8
