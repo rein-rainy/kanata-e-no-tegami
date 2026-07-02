@@ -212,6 +212,10 @@ body {
 body.debug .contents-clip { clip-path: none; }
 .content-obj {
   position: absolute;
+  /* 位置は applyState の transform(px) のみで指定。left/top(%) の毎フレーム更新は
+     レイアウトが走りスマホの開封/収納が重くなるため 0 に固定する。 */
+  left: 0;
+  top: 0;
   width: 50%;                 /* 幅は固定（編集不要） */
   transform-origin: center center;
 }
@@ -254,19 +258,28 @@ body.debug .contents-clip { clip-path: none; }
 /* CD-01: 最前面 */
 .cd-stack .cd-top { z-index: 3; }
 
-/* ステッカー風ハイライト: 斜めグラデーション(透明→白半透明→透明)を画像形にマスク */
+/* ステッカー風ハイライト: 斜めグラデーション(透明→白半透明→透明)を画像形にマスク。
+   グラデーションは内側バー(.shine-bar)を transform で横切らせる。
+   （旧 background-position-x アニメーションは毎フレーム再ペイントが走りスマホで重い） */
 .content-obj .shine {
   position: absolute; inset: 0; pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-size: 100% 100%;  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+/* 旧 background-size:300% 100% と同じ寸法のバー。
+   translateX は自身の幅(300%)基準なので、旧 background-position-x:P% は
+   translateX(-2P/3 %) に対応する（P=130% → -86.667%）。 */
+.content-obj .shine .shine-bar {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 300%;
   background: linear-gradient(115deg,
     transparent 25%,
     rgba(255,255,255,0.6) 50%,
     transparent 75%);
-  background-size: 300% 100%;
-  background-repeat: no-repeat;
-  background-position-x: 130%;             /* 既定は画面外（p=0相当） */
-  -webkit-mask-size: 100% 100%;  mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  transform: translateX(-86.667%);         /* 既定は画面外（p=0相当） */
 }
+/* 再生中だけレイヤー化（.content-obj の will-change と同じ方針） */
+.envelope.playing .shine-bar { will-change: transform; }
 /* 編集モードのみ操作可能 */
 body.debug .content-obj {
   pointer-events: auto; cursor: move;

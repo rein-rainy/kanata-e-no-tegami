@@ -204,8 +204,9 @@ function initEditor() {
       els[k].classList.toggle('selected', k === sel);
       attachDrag(els[k], k);
       // ステッカーは編集中も見えるよう中ほどにハイライトを置く
-      const sh = els[k].querySelector('.shine');
-      if (sh) sh.style.backgroundPositionX = '50%';
+      // （旧 background-position-x:50% と同位置。-2*50/3 = -33.333%）
+      const bar = els[k].querySelector('.shine-bar');
+      if (bar) bar.style.transform = 'translateX(-33.333%)';
     });
     updateGizmo();
   }

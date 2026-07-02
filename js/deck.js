@@ -46,6 +46,21 @@ WORKSHOPS.forEach((ws, i) => {
     (letterContents[i] || []).forEach((obj) => {
       const el = document.createElement('div');
       el.className = 'content-obj';
+      el._shineBars = []; // ハイライトバーを保持（毎フレームの querySelectorAll を避ける）
+      // ステッカー風ハイライトを parent に追加（mask の形に切り抜き）。
+      // mask は style属性に直書きするとdataURL内の " で壊れるためDOM APIで設定。
+      const addShine = (parent, mask, z) => {
+        const sh = document.createElement('div');
+        sh.className = 'shine';
+        if (z) sh.style.zIndex = z;
+        sh.style.webkitMaskImage = `url("${mask}")`;
+        sh.style.maskImage = `url("${mask}")`;
+        const bar = document.createElement('div');
+        bar.className = 'shine-bar';
+        sh.appendChild(bar);
+        el._shineBars.push(bar);
+        parent.appendChild(sh);
+      };
       // CD 3レイヤー合成: CD-03(最背面/回転) → CD-02(CD-03でクリップ+オーバーレイ) → CD-01(最前面)
       if (obj.cdStack || /embed15/.test(obj.src)) {
         const stack = document.createElement('div');
@@ -74,38 +89,27 @@ WORKSHOPS.forEach((ws, i) => {
         el.appendChild(stack);
         // ステッカー風ハイライト: CD-01/03 の形でマスクし、各レイヤー直上に重ねる（CD-02は無し）
         if (obj.sticker) {
-          [['CD-03.png', 1], ['CD-01.png', 3]].forEach(([file, z]) => {
-            const sh = document.createElement('div');
-            sh.className = 'shine';
-            sh.style.zIndex = z;
-            sh.style.webkitMaskImage = `url("assets/contents/${file}")`;
-            sh.style.maskImage = `url("assets/contents/${file}")`;
-            stack.appendChild(sh);
-          });
+          addShine(stack, 'assets/contents/CD-03.png', 1);
+          addShine(stack, 'assets/contents/CD-01.png', 3);
         }
-        applyState(el, obj.init);
         contentsEl.appendChild(el);
+        applyState(el, obj.init); // applyState は親の実寸を参照するため追加後に適用
         return;
       }
       el.innerHTML = `<img src="${obj.src}" alt="">`;
-      if (obj.sticker) {
-        // ステッカー風ハイライト（画像の形にマスク）。
-        // mask は style属性に直書きするとdataURL内の " で壊れるためDOM APIで設定。
-        const sh = document.createElement('div');
-        sh.className = 'shine';
-        sh.style.webkitMaskImage = `url("${obj.src}")`;
-        sh.style.maskImage = `url("${obj.src}")`;
-        el.appendChild(sh);
-      }
-      applyState(el, obj.init);
+      if (obj.sticker) addShine(el, obj.src);
       contentsEl.appendChild(el);
+      applyState(el, obj.init); // 同上: 追加後に適用
     });
   }
-  // ステッカーのハイライト位置を進捗pで更新（斜めに横切る）
+  // ステッカーのハイライト位置を進捗pで更新（斜めに横切る）。
+  // background-position の毎フレーム更新は再ペイントが走りスマホで重いため、
+  // 内側バー(.shine-bar)を transform で動かす（旧 background-position-x:(130 - p*160)% と同位置）。
   function applyShine(el, p) {
-    el.querySelectorAll('.shine').forEach((sh) => {
-      sh.style.backgroundPositionX = (130 - p * 160) + '%';
-    });
+    const bars = el._shineBars;
+    if (!bars || !bars.length) return;
+    const tx = `translateX(${((p * 160 - 130) * 2 / 3).toFixed(3)}%)`;
+    for (const b of bars) b.style.transform = tx;
   }
   // lin: 0=初期, 1=最終 の線形進捗。X/Y 同じイーズインアウト。
   // 位置は init→ctrl→final の2次ベジエ曲線、回転/拡縮は直線補間。
@@ -127,11 +131,8 @@ WORKSHOPS.forEach((ws, i) => {
   }
   // ステッカーのハイライトを進捗spで一括更新（オブジェクト移動とは別タイムライン）
   function applyAllShine(sp) {
-    const objs = letterContents[i] || [];
     const els = contentsEl.children;
-    for (let k = 0; k < objs.length; k++) {
-      if (els[k] && objs[k].sticker) applyShine(els[k], sp);
-    }
+    for (let k = 0; k < els.length; k++) applyShine(els[k], sp); // バー無しは何もしない
   }
 
   // 事前デコード済みビットマップを canvas へ描画（再デコード無し＝高速）。
@@ -166,6 +167,7 @@ WORKSHOPS.forEach((ws, i) => {
   const con = { v: 0, target: 0, delayLeft: 0, dur: CONTENT_DURATION };
   const shn = { v: 0, target: 0, delayLeft: 0, dur: SHINE_DURATION }; // ハイライト用
   let lastT = 0;
+  let lastCon = 0, lastShn = 0; // 直近にDOMへ反映した中身/ハイライトの進捗
   let held = false; // ギャラリー展開中: 封筒を開いたまま保持（ホバーが外れても閉じない）
   let openWaiters = []; // 「完全に開ききった」時点で一度だけ呼ぶコールバック群
 
@@ -180,8 +182,9 @@ WORKSHOPS.forEach((ws, i) => {
       }
     });
     setEnv(frameAt(env.v));
-    applyContents(con.v);
-    applyAllShine(shn.v);
+    // 値が動いたチャンネルだけDOMへ反映（遅延待ちの間の無駄なスタイル更新を省く）
+    if (con.v !== lastCon) { lastCon = con.v; applyContents(con.v); }
+    if (shn.v !== lastShn) { lastShn = shn.v; applyAllShine(shn.v); }
     const busy = env.v !== env.target || con.v !== con.target || shn.v !== shn.target ||
                  env.delayLeft > 0 || con.delayLeft > 0 || shn.delayLeft > 0;
     rafId = busy ? requestAnimationFrame(tick) : null;
@@ -236,8 +239,9 @@ WORKSHOPS.forEach((ws, i) => {
     con.v = con.target = 0; con.delayLeft = 0;
     shn.v = shn.target = 0; shn.delayLeft = 0;
     setEnv(1, true); // フレーム1(閉じた状態)を描画。is-back もここで解除される
-    renderContents();
+    renderContents(); // 生成直後のバーはCSS既定位置＝進捗0
     applyContents(0);
+    lastCon = 0; lastShn = 0;
   }
 
   renderContents();
@@ -264,7 +268,9 @@ WORKSHOPS.forEach((ws, i) => {
     }
   }
 
-  ctx.push({ cardEl: card, envelopeEl, contentsEl, renderContents, applyContents, animate, reset, holdOpen, holdOpenThen, releaseClose, isOpen, redrawCurrent });
+  // reapply: 現在の進捗で中身の位置を取り直す（リサイズで封筒サイズが変わった時用）
+  const reapply = () => applyContents(con.v);
+  ctx.push({ cardEl: card, envelopeEl, contentsEl, renderContents, applyContents, animate, reset, holdOpen, holdOpenThen, releaseClose, isOpen, redrawCurrent, reapply });
 });
 
 // フレームのデコードを開始。表示実寸×DPRに合わせて縮小し、メモリを節約する。
@@ -276,6 +282,17 @@ WORKSHOPS.forEach((ws, i) => {
   const redrawAll = () => ctx.forEach((C) => C.redrawCurrent());
   // 先頭フレーム確定時（onFirst）と全フレーム確定時（then）に描き直す
   loadFrames(Math.round(dispW * dpr), redrawAll).then(redrawAll);
+}
+
+// リサイズ（スマホの回転・アドレスバー伸縮など）で中身の位置(px)を取り直す。
+// applyState を transform(px) に一本化したため、旧 left/top(%) のような自動追従はしない。
+// DEBUG時はエディタが編集中の状態を直接描いているので上書きしない。
+if (!DEBUG) {
+  let resizeT;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => ctx.forEach((C) => C.reapply()), 150);
+  });
 }
 
 /* ───── ドットナビ生成 ───── */
