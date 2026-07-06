@@ -152,9 +152,13 @@ WORKSHOPS.forEach((ws, i) => {
     // （スマホで開封後に中身が動く区間のカクつき対策。PCは元々軽いので影響なし）
     if (frame === lastFrame && !force) return;
     lastFrame = frame;
-    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[frame]); // envelope01
+    // デバッグの静止表示中は envelope01 を最終フレーム(裏面)で固定し、is-back で最背面へ。
+    // 中身を隠さない背景として使う。再生中(playing)は通常のフレーム遷移。
+    const debugStatic = DEBUG && !envelopeEl.classList.contains('playing');
+    const f1 = debugStatic ? TOTAL_FRAMES : frame;
+    drawFrame(frameEl,  c1, FRAME_BITMAPS.e1[f1]);    // envelope01
     drawFrame(frameEl2, c2, FRAME_BITMAPS.e2[frame]); // envelope02
-    frameEl.classList.toggle('is-back', frame >= BACK_FRAME);
+    frameEl.classList.toggle('is-back', f1 >= BACK_FRAME);
   }
   const redrawCurrent = () => setEnv(frameAt(env.v), true);
   const frameAt = (p) => Math.min(TOTAL_FRAMES, Math.max(1,
@@ -198,7 +202,8 @@ WORKSHOPS.forEach((ws, i) => {
     }
   }
   function ensureLoop() {
-    envelopeEl.classList.add('playing'); // 再生中（デバッグ時 envelope01 を表示）
+    envelopeEl.classList.add('playing'); // 再生中（デバッグ時 envelope01 を通常フレームで表示）
+    lastFrame = -1; // 再生開始で envelope01 の静止フレーム固定を解除し、必ず描き直す
     if (rafId == null) { lastT = performance.now(); rafId = requestAnimationFrame(tick); }
   }
 

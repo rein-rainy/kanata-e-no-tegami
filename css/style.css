@@ -208,8 +208,7 @@ body {
 }
 /* 内側: オブジェクトを保持し、上昇/収納時はこの要素ごと translateY する */
 .contents { position: absolute; inset: 0; pointer-events: none; }
-/* デバッグ時はクリッピングを解除して全オブジェクトを確認できるように */
-body.debug .contents-clip { clip-path: none; }
+/* デバッグ時も本番と同じクリッピングを適用（封筒内の見え方をそのまま確認できるように） */
 .content-obj {
   position: absolute;
   /* 位置は applyState の transform(px) のみで指定。left/top(%) の毎フレーム更新は
@@ -283,13 +282,18 @@ body.debug .contents-clip { clip-path: none; }
 /* 編集モードのみ操作可能 */
 body.debug .content-obj {
   pointer-events: auto; cursor: move;
-  outline: 1px dashed rgba(120, 180, 255, 0.35);
+  outline: 1px dashed rgba(32, 143, 219, 0.45);
 }
-body.debug .content-obj.selected { outline: 2px solid #4fa3ff; }
+/* 選択枠はギズモのバウンディングボックス（.g-box）が担う */
+body.debug .content-obj.selected { outline: none; }
 
-/* デバッグ: 再生していない間は envelope01 を非表示（中身を編集しやすく） */
-body.debug .layer-01 { display: none; }
-body.debug .envelope.playing .layer-01 { display: block; }
+/* デバッグ: envelope01 は静止中つねに最終フレーム(裏面)を表示（描画は deck.js の setEnv）。
+   最終フレームは is-back クラスが付くため .layer-01.is-back { z-index: 0 } で最背面になり、
+   編集中の中身を隠さない背景になる。旧来の display:none は撤廃。 */
+
+/* デバッグ: envelope02 は静止中 90% 不透明にして中身をうっすら透かして見せる。再生中は不透明に戻す。 */
+body.debug .layer-02 { opacity: 0.9; }
+body.debug .envelope.playing .layer-02 { opacity: 1; }
 
 /* ───── 編集ギズモ（回転・拡縮・パス制御点） ───── */
 .gizmo { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: none; }
@@ -297,15 +301,37 @@ body.debug .envelope.editing .gizmo { display: block; }
 body.debug .envelope.playing .gizmo { display: none; }       /* 再生中は隠す */
 body.debug .envelope.playing .content-obj { outline: none; } /* 再生中は枠線なし */
 .gizmo .path { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.g-handle {
-  position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px;
-  border-radius: 50%; pointer-events: auto; cursor: grab;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.5);
+/* Photoshop風バウンディングボックス。色は青 (#208FDB) に統一 */
+.g-box { position: absolute; pointer-events: none; border: 1px solid #208FDB; }
+/* 四隅の拡縮ハンドル（白い四角 + 青枠） */
+.g-corner {
+  position: absolute; width: 9px; height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  background: #fff; border: 1px solid #208FDB; border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
 }
-.g-rot   { background: #4fd36a; }   /* 回転 */
-.g-scale { background: #ffb84f; }   /* 拡縮 */
-.g-ctrl  { background: #ff5ea3; width: 14px; height: 14px; margin: -7px 0 0 -7px; } /* パス制御点 */
-.g-line  { stroke: rgba(255,255,255,0.4); stroke-width: 1; stroke-dasharray: 3 3; }
+.g-nw { left: 0;    top: 0;    cursor: nwse-resize; }
+.g-ne { left: 100%; top: 0;    cursor: nesw-resize; }
+.g-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.g-sw { left: 0;    top: 100%; cursor: nesw-resize; }
+/* 回転ノブ（ボックス上辺の中央に密着。四隅の拡縮ハンドルと同じ四角形） */
+.g-rot {
+  position: absolute; left: 50%; top: 0;
+  width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  background: #fff; border: 1px solid #208FDB; border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: auto; cursor: grab;
+}
+/* パス制御点 */
+.g-ctrl {
+  position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 50%; background: #fff; border: 1px solid #208FDB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: auto; cursor: grab;
+}
+.g-ctrl::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #208FDB; }
+.g-rot:active, .g-ctrl:active { cursor: grabbing; }
 
 /* ───── ラベル ───── */
 .label {
@@ -459,48 +485,105 @@ body.debug .envelope.playing .content-obj { outline: none; } /* 再生中は枠�
 .gallery-close:hover { background: rgba(40, 40, 48, 0.7); transform: scale(1.08); }
 .gallery.show-bg .gallery-close { opacity: 1; transform: scale(1); pointer-events: auto; }
 
-/* ───── デバッグエディタ ───── */
+/* ───── デバッグエディタ（白基調） ───── */
 #editor {
   position: fixed; left: 16px; bottom: 16px; z-index: 100;
-  width: 320px; max-height: 88vh; overflow-y: auto;
-  background: rgba(20, 20, 24, 0.95); border: 1px solid #333; border-radius: 12px;
-  padding: 14px; font-family: -apple-system, system-ui, sans-serif;
-  font-size: 12px; color: #ddd; backdrop-filter: blur(6px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  width: 300px; max-height: 88vh; overflow-y: auto;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 10px;
+  padding: 14px;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 12px; line-height: 1.5; color: #27272a;
+  letter-spacing: -0.01em;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  /* 枠線の代わりにヘアライン+影で面を定義 */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 16px 48px rgba(0, 0, 0, 0.28);
 }
-#editor h2 { font-size: 13px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }
+#editor .ed-head { display: flex; justify-content: space-between; align-items: center; }
+#editor h2 { font-size: 13px; font-weight: 600; color: #18181b; }
+#editor .ed-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em; color: #71717a;
+}
+#editor .ed-badge i { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+
+/* セクションはヘアライン区切り（箱で囲わない） */
+#editor .sec { padding-top: 12px; margin-top: 12px; border-top: 1px solid rgba(0, 0, 0, 0.07); }
+#editor .ed-head + .row { margin-top: 12px; }
+#editor .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+#editor .sec-head label { margin: 0; }
 #editor .row { margin-bottom: 10px; }
-#editor label { display: block; margin-bottom: 3px; opacity: 0.7; }
+#editor .row:last-child { margin-bottom: 0; }
+#editor label { display: block; margin-bottom: 4px; font-size: 11px; color: #71717a; }
+
 #editor select, #editor input[type=text] {
-  width: 100%; background: #1c1c22; color: #eee; border: 1px solid #444;
-  border-radius: 6px; padding: 5px 7px; font-size: 12px;
+  width: 100%; background: #fff; color: #27272a; border: 0;
+  border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: inherit;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.11);
 }
-#editor input[type=range] { width: 100%; }
+#editor select:focus, #editor input[type=text]:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
 #editor .btn {
-  background: #2a2a33; color: #eee; border: 1px solid #444; border-radius: 6px;
-  padding: 6px 9px; font-size: 12px; cursor: pointer; margin: 2px 2px 0 0;
+  appearance: none; border: 0;
+  background: #fff; color: #27272a;
+  border-radius: 6px; padding: 6px 10px; font-size: 12px; font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.09), 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background 120ms ease, transform 120ms cubic-bezier(0.2, 0, 0, 1);
 }
-#editor .btn:hover { background: #3a3a46; }
-#editor .btn.primary { background: #2f5fa3; border-color: #3f74c0; }
-#editor .btn.danger  { background: #7a2b2b; border-color: #a33; }
-#editor .objlist { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow: auto; }
-#editor .objitem { display: flex; align-items: center; gap: 6px; padding: 4px 6px;
-  border: 1px solid #333; border-radius: 6px; cursor: pointer; }
-#editor .objitem.sel { border-color: #4fa3ff; background: #1d2733; }
-#editor .objitem img { width: 24px; height: 24px; object-fit: contain; background: #000; border-radius: 3px; }
-#editor .objitem span { flex: 1; }
-#editor .objmove { width: 22px; height: 22px; padding: 0; font-size: 11px; line-height: 1;
-  background: #2a2a33; color: #eee; border: 1px solid #444; border-radius: 4px; cursor: pointer; }
-#editor .objmove:hover { background: #3a3a46; }
-#editor .objmove:disabled { opacity: 0.3; cursor: default; }
-#editor .slider { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-#editor .slider label { flex: 0 0 42px; margin: 0; }
-#editor .slider span { width: 38px; text-align: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
-#editor .state-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
-#editor .state-tabs button { flex: 1; }
-#editor .state-tabs button.on { background: #2f5fa3; border-color: #3f74c0; }
-#editor .hint { opacity: 0.5; font-size: 11px; line-height: 1.5; }
-#editor textarea { width: 100%; height: 80px; background: #111; color: #9f9;
-  border: 1px solid #333; border-radius: 6px; font-size: 11px; padding: 6px; margin-top: 6px; }
-#debugBadge { position: fixed; top: 10px; left: 12px; z-index: 100;
-  font: 11px system-ui; color: #4fa3ff; opacity: 0.75; }
+#editor .btn:hover { background: #f4f4f5; }
+#editor .btn:active { transform: scale(0.97); }
+#editor .btn.sm { padding: 3px 8px; font-size: 11px; }
+#editor .btn.wide { width: 100%; }
+#editor .btn.primary, #editor .btn.on { background: #18181b; color: #fff; }
+#editor .btn.primary:hover, #editor .btn.on:hover { background: #27272a; }
+#editor .btn.danger { color: #b91c1c; }
+#editor .btn.danger:hover { background: #fef2f2; }
+#editor .btnrow { display: flex; gap: 6px; margin-bottom: 8px; }
+#editor .btnrow .btn { flex: 1; padding-inline: 4px; }
+#editor .state-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+#editor .state-tabs .btn { flex: 1; }
+#editor .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+#editor .toggle-row label { margin: 0; }
+#editor #ed-sticker { min-width: 46px; text-align: center; } /* ON/OFF で幅が揺れないよう固定 */
+
+/* オブジェクト一覧: ヘアライン行 */
+#editor .objlist {
+  display: flex; flex-direction: column; max-height: 132px; overflow: auto;
+  border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07);
+}
+#editor .objlist:empty { display: none; }
+#editor .objitem { display: flex; align-items: center; gap: 6px; padding: 5px 7px; cursor: pointer; }
+#editor .objitem + .objitem { border-top: 1px solid rgba(0, 0, 0, 0.06); }
+#editor .objitem:hover { background: #fafafa; }
+#editor .objitem.sel { background: #f4f4f5; box-shadow: inset 2px 0 0 #18181b; }
+#editor .objitem img {
+  width: 22px; height: 22px; object-fit: contain; flex: none;
+  background: #e4e4e7; border-radius: 4px;
+}
+#editor .objitem span { flex: 1; color: #52525b; }
+#editor .objitem input[type=range] { width: 60px; flex: none; accent-color: #18181b; }
+#editor .gsval {
+  flex: none !important; width: 32px; text-align: right;
+  font-size: 11px; color: #a1a1aa; font-variant-numeric: tabular-nums;
+}
+#editor .objmove {
+  width: 20px; height: 20px; padding: 0; flex: none;
+  font-size: 10px; line-height: 1;
+  background: transparent; color: #52525b; border: 0; border-radius: 4px; cursor: pointer;
+}
+#editor .objmove:hover { background: rgba(0, 0, 0, 0.06); }
+#editor .objmove:disabled { opacity: 0.25; cursor: default; }
+
+#editor .hint { margin-top: 8px; font-size: 10.5px; line-height: 1.6; color: #a1a1aa; }
+#editor textarea {
+  width: 100%; height: 72px; margin-top: 8px; padding: 6px 8px;
+  background: #fafafa; color: #52525b; border: 0; border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  font: 10.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  resize: vertical;
+}

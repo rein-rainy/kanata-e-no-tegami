@@ -13,10 +13,6 @@ idbGet().then((data) => {
 
 function initEditor() {
   document.body.classList.add('debug');
-  const badge = document.createElement('div');
-  badge.id = 'debugBadge';
-  badge.textContent = '● DEBUG MODE';
-  document.body.appendChild(badge);
 
   let letter = 0;        // 編集中の手紙 (0-8)
   let sel = -1;          // 選択中オブジェクト index
@@ -25,60 +21,62 @@ function initEditor() {
   const panel = document.createElement('div');
   panel.id = 'editor';
   panel.innerHTML = `
-    <h2><span>🛠 手紙エディタ</span><span class="hint">中身 = 02/03 の間</span></h2>
+    <div class="ed-head">
+      <h2>手紙エディタ</h2>
+      <span class="ed-badge"><i></i>DEBUG</span>
+    </div>
     <div class="row">
       <label>編集する手紙</label>
       <select id="ed-letter"></select>
     </div>
-    <div class="row">
-      <button class="btn primary" id="ed-add">＋ 画像を追加</button>
-      <input type="file" id="ed-file" accept="image/*" hidden>
-    </div>
-    <div class="row">
-      <label>オブジェクト（クリックで選択）</label>
+    <div class="sec">
+      <div class="sec-head">
+        <label>オブジェクト</label>
+        <button class="btn sm" id="ed-add">画像を追加</button>
+        <input type="file" id="ed-file" accept="image/*" hidden>
+      </div>
       <div class="objlist" id="ed-list"></div>
     </div>
-    <div class="row">
-      <label>横スクロール展開：並び順 ◀▶ ＆ スケール</label>
+    <div class="sec">
+      <div class="sec-head">
+        <label>ギャラリー展開 — 並び順・スケール</label>
+        <button class="btn sm" id="ed-gallery">確認</button>
+      </div>
       <div class="objlist" id="ed-glist"></div>
-      <button class="btn" id="ed-gallery" style="width:100%;margin-top:6px">▶ ギャラリー展開を確認</button>
     </div>
     <div id="ed-controls" style="display:none">
-      <div class="state-tabs">
-        <button class="btn on" id="ed-init">初期状態</button>
-        <button class="btn" id="ed-final">最終状態</button>
-      </div>
-      <div class="row">
-        <label>画像パス / src（手動編集可）</label>
-        <input type="text" id="ed-src">
-      </div>
-      <div class="hint">封筒上で直接操作: ドラッグ=移動 / 緑=回転 / 橙=拡縮 / 桃=パスの曲がり</div>
-      <div class="row">
-        <button class="btn" id="ed-sticker" style="width:100%">✨ ステッカーエフェクト</button>
-      </div>
-      <div class="row">
-        <button class="btn" id="ed-copystate">この状態を反対へコピー</button>
-        <button class="btn" id="ed-dup">複製</button>
-        <button class="btn danger" id="ed-del">削除</button>
-      </div>
-      <div class="row">
-        <button class="btn primary" id="ed-play">▶ 初期から再生</button>
+      <div class="sec">
+        <div class="state-tabs">
+          <button class="btn on" id="ed-init">初期状態</button>
+          <button class="btn" id="ed-final">最終状態</button>
+        </div>
+        <div class="row">
+          <label>画像パス / src</label>
+          <input type="text" id="ed-src">
+        </div>
+        <div class="toggle-row">
+          <label>ステッカーエフェクト</label>
+          <button class="btn sm" id="ed-sticker">OFF</button>
+        </div>
+        <div class="btnrow">
+          <button class="btn" id="ed-copystate">反対へコピー</button>
+          <button class="btn" id="ed-dup">複製</button>
+          <button class="btn danger" id="ed-del">削除</button>
+        </div>
+        <button class="btn wide" id="ed-play">初期から再生</button>
+        <p class="hint">封筒上で直接操作 — ドラッグ: 移動 / 四隅: 拡縮 / 上のノブ: 回転 / パス上の点: 曲がりの調整</p>
       </div>
     </div>
-    <hr style="border-color:#333;margin:10px 0">
-    <div class="row">
-      <button class="btn primary" id="ed-save" style="width:100%">💾 保存</button>
+    <div class="sec">
+      <button class="btn primary wide" id="ed-save">保存</button>
+      <div class="btnrow">
+        <button class="btn" id="ed-export">JSONコピー</button>
+        <button class="btn danger" id="ed-clear">この手紙を空に</button>
+      </div>
+      <button class="btn wide" id="ed-bake">画像を焼き込んでJSON書き出し</button>
+      <p class="hint">埋め込み画像を webp で assets/contents に保存し、軽量JSONを js/config.js の BAKED_CONTENTS へ貼り付けます。</p>
+      <textarea id="ed-json" placeholder="書き出したJSONがここに表示されます" readonly></textarea>
     </div>
-    <div class="row">
-      <button class="btn" id="ed-export">JSON書き出し（コピー）</button>
-      <button class="btn danger" id="ed-clear">この手紙を空に</button>
-    </div>
-    <div class="row">
-      <button class="btn primary" id="ed-bake" style="width:100%">📦 画像をファイル化して焼き込み用JSONを書き出し</button>
-    </div>
-    <div class="hint">埋め込み画像を webp で assets/contents に保存し、src をパス参照に置換した軽量JSONを出力します。</div>
-    <textarea id="ed-json" placeholder="JSONがここに出ます。js/config.js の BAKED_CONTENTS に貼り付けて確定。" readonly></textarea>
-    <div class="hint">封筒上でドラッグ＝移動 / クリック＝選択。変更は💾保存ボタンで保存（IndexedDB）。</div>
   `;
   document.body.appendChild(panel);
 
@@ -132,8 +130,8 @@ function initEditor() {
     $('#ed-final').classList.toggle('on', stateKey === 'final');
     const o = curObj();
     $('#ed-src').value = o.src.startsWith('data:') ? '(data URL / 画像埋め込み)' : o.src;
-    $('#ed-sticker').classList.toggle('primary', !!o.sticker);
-    $('#ed-sticker').textContent = o.sticker ? '✨ ステッカーエフェクト：ON' : '✨ ステッカーエフェクト：OFF';
+    $('#ed-sticker').classList.toggle('on', !!o.sticker);
+    $('#ed-sticker').textContent = o.sticker ? 'ON' : 'OFF';
   }
   // ── 横スクロール（ギャラリー）並び順＆スケール ──
   function ensureGal(o, idx) {
@@ -164,8 +162,8 @@ function initEditor() {
         `<img src="${o.src}"><span>#${pos + 1}</span>` +
         `<button class="objmove" data-act="gleft"  title="左へ"${pos === 0 ? ' disabled' : ''}>◀</button>` +
         `<button class="objmove" data-act="gright" title="右へ"${pos === ord.length - 1 ? ' disabled' : ''}>▶</button>` +
-        `<input type="range" min="0.2" max="2.6" step="0.05" value="${o.gallery.scale}" style="width:70px">` +
-        `<span class="gsval" style="width:34px;text-align:right;opacity:.6">${o.gallery.scale.toFixed(2)}</span>`;
+        `<input type="range" min="0.2" max="2.6" step="0.05" value="${o.gallery.scale}">` +
+        `<span class="gsval">${o.gallery.scale.toFixed(2)}</span>`;
       it.addEventListener('click', (e) => {
         if (e.target.classList.contains('objmove') || e.target.tagName === 'INPUT') return;
         sel = rec.idx; refreshAll();
@@ -291,7 +289,7 @@ function initEditor() {
   let dirty = false;
   function markDirty() {
     dirty = true;
-    $('#ed-save').textContent = '💾 保存（未保存の変更あり *）';
+    $('#ed-save').textContent = '保存 — 未保存の変更あり';
   }
   $('#ed-save').addEventListener('click', async () => {
     $('#ed-save').textContent = '保存中…';
@@ -299,9 +297,9 @@ function initEditor() {
       await saveContents();
       dirty = false;
       $('#ed-save').textContent = '保存しました ✓';
-      setTimeout(() => { if (!dirty) $('#ed-save').textContent = '💾 保存'; }, 1500);
+      setTimeout(() => { if (!dirty) $('#ed-save').textContent = '保存'; }, 1500);
     } catch (err) {
-      $('#ed-save').textContent = '💾 保存（失敗）';
+      $('#ed-save').textContent = '保存（失敗）';
       alert('保存に失敗しました: ' + err);
     }
   });
@@ -315,7 +313,7 @@ function initEditor() {
     $('#ed-json').value = json;
     if (navigator.clipboard) navigator.clipboard.writeText(json).then(() => {
       $('#ed-export').textContent = 'コピーしました ✓';
-      setTimeout(() => $('#ed-export').textContent = 'JSON書き出し（コピー）', 1500);
+      setTimeout(() => $('#ed-export').textContent = 'JSONコピー', 1500);
     }, () => {});
   });
 
@@ -428,7 +426,7 @@ function initEditor() {
     });
   }
 
-  /* ── 編集ギズモ（回転・拡縮・パス制御点を直接操作） ── */
+  /* ── 編集ギズモ（バウンディングボックス＋パス制御点を直接操作） ── */
   const NS = 'http://www.w3.org/2000/svg';
   const gizmo = document.createElement('div');
   gizmo.className = 'gizmo';
@@ -436,34 +434,57 @@ function initEditor() {
   gsvg.setAttribute('class', 'path');
   gsvg.setAttribute('viewBox', '0 0 100 100');
   gsvg.setAttribute('preserveAspectRatio', 'none');
+  // 制御点から始点/終点へ結ぶガイド線（ベジェハンドル）。曲線本体より薄く
+  const gGuide = document.createElementNS(NS, 'path');
+  gGuide.setAttribute('fill', 'none');
+  gGuide.setAttribute('stroke', '#208FDB');
+  gGuide.setAttribute('stroke-width', '0.4');
+  gGuide.setAttribute('stroke-dasharray', '1 1.5');
+  gGuide.setAttribute('stroke-linecap', 'round');
+  gGuide.setAttribute('opacity', '0.5');
+  gsvg.appendChild(gGuide);
   const gPath = document.createElementNS(NS, 'path');
   gPath.setAttribute('fill', 'none');
-  gPath.setAttribute('stroke', '#ff5ea3');
-  gPath.setAttribute('stroke-width', '0.6');
-  gPath.setAttribute('stroke-dasharray', '2 2');
+  gPath.setAttribute('stroke', '#208FDB');
+  gPath.setAttribute('stroke-width', '0.5');
+  gPath.setAttribute('stroke-dasharray', '1.5 1.5');
+  gPath.setAttribute('stroke-linecap', 'round');
   gsvg.appendChild(gPath);
-  const gRot   = Object.assign(document.createElement('div'), { className: 'g-handle g-rot',   title: '回転' });
-  const gScale = Object.assign(document.createElement('div'), { className: 'g-handle g-scale', title: '拡縮' });
-  const gCtrl  = Object.assign(document.createElement('div'), { className: 'g-handle g-ctrl',  title: 'パスの曲がり' });
-  gizmo.append(gsvg, gRot, gScale, gCtrl);
-
-  const ROT_OFFSET = 70, SCALE_OFFSET = 70; // ハンドルの距離(px)
+  // 選択オブジェクトを囲うボックス。四隅=拡縮 / 上のノブ=回転
+  const gBox = document.createElement('div');
+  gBox.className = 'g-box';
+  const gCorners = ['nw', 'ne', 'se', 'sw'].map((pos) => {
+    const h = document.createElement('div');
+    h.className = `g-corner g-${pos}`;
+    h.title = '拡縮';
+    gBox.appendChild(h);
+    return h;
+  });
+  const gRot = Object.assign(document.createElement('div'), { className: 'g-rot', title: '回転' });
+  gBox.appendChild(gRot);
+  const gCtrl = Object.assign(document.createElement('div'), { className: 'g-ctrl', title: 'パスの曲がり' });
+  gizmo.append(gsvg, gBox, gCtrl);
 
   function updateGizmo() {
-    const o = curObj();
-    if (!o) { gizmo.style.display = 'none'; return; }
+    const o = curObj(), el = selEl();
+    if (!o || !el) { gizmo.style.display = 'none'; return; }
     gizmo.style.display = '';
     const env = ctx[letter].envelopeEl;
     if (gizmo.parentNode !== env) env.appendChild(gizmo);
     const s = curState(), a = o.init, b = o.final;
     const c = o.ctrl || (o.ctrl = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-    // 移動パス（init → ctrl → final）
+    // 移動パス（init → ctrl → final）＋ 制御点から始点/終点へのガイド線
     gPath.setAttribute('d', `M ${a.x} ${a.y} Q ${c.x} ${c.y} ${b.x} ${b.y}`);
-    // ハンドル位置（編集中の状態の中心基準）
-    gRot.style.left = s.x + '%'; gRot.style.top = s.y + '%';
-    gRot.style.transform = `rotate(${s.rot}deg) translateY(-${ROT_OFFSET}px)`;
-    gScale.style.left = s.x + '%'; gScale.style.top = s.y + '%';
-    gScale.style.transform = `rotate(${s.rot}deg) translateX(${SCALE_OFFSET}px)`;
+    gGuide.setAttribute('d', `M ${a.x} ${a.y} L ${c.x} ${c.y} L ${b.x} ${b.y}`);
+    // 画像ロード前は offsetHeight が 0 のため、ロード完了時に再計算
+    const img = el.querySelector('img');
+    if (img && !img.complete) img.addEventListener('load', updateGizmo, { once: true });
+    // ボックス: 未変形サイズ×scale を中心 (x,y)% に置き、回転は transform で反映
+    gBox.style.width  = el.offsetWidth  * s.scale + 'px';
+    gBox.style.height = el.offsetHeight * s.scale + 'px';
+    gBox.style.left = s.x + '%';
+    gBox.style.top  = s.y + '%';
+    gBox.style.transform = `translate(-50%, -50%) rotate(${s.rot}deg)`;
     gCtrl.style.left = c.x + '%'; gCtrl.style.top = c.y + '%';
   }
 
@@ -490,24 +511,24 @@ function initEditor() {
     gRot.addEventListener('pointermove', move); gRot.addEventListener('pointerup', up);
   });
 
-  // 拡縮ハンドル
-  gScale.addEventListener('pointerdown', (e) => {
+  // 四隅の拡縮ハンドル（中心からの距離比でスケール）
+  gCorners.forEach((h) => h.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
     const o = curObj(); if (!o) return;
     const st = curState(), r = rectOf(), c0 = centerPx(st, r);
     const startDist = Math.hypot(e.clientX - c0.x, e.clientY - c0.y) || 1;
     const startScale = st.scale;
-    gScale.setPointerCapture(e.pointerId);
+    h.setPointerCapture(e.pointerId);
     const move = (ev) => {
       const d = Math.hypot(ev.clientX - c0.x, ev.clientY - c0.y);
       st.scale = Math.max(0.05, startScale * d / startDist);
       applyState(selEl(), st); updateGizmo();
     };
-    const up = () => { gScale.releasePointerCapture(e.pointerId);
-      gScale.removeEventListener('pointermove', move); gScale.removeEventListener('pointerup', up);
+    const up = () => { h.releasePointerCapture(e.pointerId);
+      h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up);
       markDirty(); };
-    gScale.addEventListener('pointermove', move); gScale.addEventListener('pointerup', up);
-  });
+    h.addEventListener('pointermove', move); h.addEventListener('pointerup', up);
+  }));
 
   // パス制御点ハンドル
   gCtrl.addEventListener('pointerdown', (e) => {
