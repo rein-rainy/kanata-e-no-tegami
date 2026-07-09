@@ -36,6 +36,8 @@ const WORKSHOPS = [
 // 影はあらかじめ envelope01 の素材に焼き込み済みのため、実行時の影合成は不要。
 const framePath  = (n) => `assets/envelope01/${String(n).padStart(4, '0')}.webp`;
 const framePath2 = (n) => `assets/envelope02/${String(n).padStart(4, '0')}.webp`;
+// 特別な手紙（このサイトについて）用: envelope01〜03を統合した30フレームの回転アニメ。
+const rotatePath = (n) => `assets/envelope_rotate/${String(n).padStart(4, '0')}.webp`;
 
 // フレームを「一度だけデコードして保持」し、全封筒で共有する。
 // 旧方式（毎フレーム img.src を差し替え）は WebP の再デコードがメインスレッドで
@@ -78,6 +80,36 @@ function loadFrames(maxW, onFirst) {
   return framesReady;
 }
 
+// 特別な手紙用の回転フレーム（統合済み1レイヤー）を事前デコードして保持。
+const ROTATE_BITMAPS = []; // index 1..TOTAL_FRAMES
+let rotateReady = null;
+function loadRotateFrames(maxW, onFirst) {
+  if (rotateReady) return rotateReady;
+  const w = Math.min(950, Math.max(1, Math.round(maxW || 950)));
+  const h = Math.round(w * 1080 / 950);
+  const canBitmap = (typeof createImageBitmap === 'function');
+  const opt = canBitmap ? { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' } : null;
+  const decode = (path) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      if (opt) createImageBitmap(img, opt).then(resolve, () => resolve(img));
+      else resolve(img);
+    };
+    img.onerror = () => resolve(null);
+    img.src = path;
+  });
+  rotateReady = (async () => {
+    ROTATE_BITMAPS[1] = await decode(rotatePath(1)); // 先頭を最優先（初期表示）
+    if (typeof onFirst === 'function') onFirst();
+    const tasks = [];
+    for (let i = 2; i <= TOTAL_FRAMES; i++) {
+      tasks.push(decode(rotatePath(i)).then((bm) => { ROTATE_BITMAPS[i] = bm; }));
+    }
+    await Promise.all(tasks);
+  })();
+  return rotateReady;
+}
+
 /* ============================================================
    手紙の中身データ（手紙ごと・envelope02と03の間に配置）
    letterContents[letterIndex] = [ { src, w, init, final }, ... ]
@@ -87,13 +119,15 @@ function loadFrames(maxW, onFirst) {
      画像を assets/contents に書き出し、出力された軽量JSONを BAKED_CONTENTS に貼り付け。
      （src がパス参照になるので JSON は数KB で済む＝base64埋め込みの肥大化を回避）
 ============================================================ */
-const BAKED_CONTENTS = {
+
+const BAKED_CONTENTS =
+{
   "0": [
     {
       "src": "assets/contents/embed01.webp",
       "init": {
-        "x": 53.40841284990738,
-        "y": 93.50569463596969,
+        "x": 53.907502404616864,
+        "y": 90.82644715504476,
         "rot": 4.019402859697041,
         "scale": 1.5714309679756318
       },
@@ -357,31 +391,7 @@ const BAKED_CONTENTS = {
     }
   ],
   "4": [],
-  "5": [
-    {
-      "src": "assets/contents/embed16.webp",
-      "init": {
-        "x": 45.92286045356728,
-        "y": 90.25583901217311,
-        "rot": -0.0834949728862786,
-        "scale": 1.4235817096054924
-      },
-      "final": {
-        "x": 42.17099817910942,
-        "y": 46.4246607257266,
-        "rot": -3.334903238142805,
-        "scale": 1.4235817096054924
-      },
-      "ctrl": {
-        "x": 47.380400595927824,
-        "y": 66.18032500436833
-      },
-      "gallery": {
-        "order": 0,
-        "scale": 1
-      }
-    }
-  ],
+  "5": [],
   "6": [],
   "7": [
     {
@@ -481,9 +491,7 @@ const BAKED_CONTENTS = {
   ],
   "8": [
     {
-      "src": "assets/contents/CD-03.png",
-      "cdStack": true,
-      "sticker": true,
+      "src": "assets/contents/embed15.webp",
       "init": {
         "x": 58.72241689553935,
         "y": 70.1945767324327,
@@ -500,15 +508,85 @@ const BAKED_CONTENTS = {
         "x": 57.6696025507466,
         "y": 44.1296530275051
       },
+      "sticker": true,
       "gallery": {
         "order": 0,
         "scale": 0.8
       }
     }
   ]
-};
+}
+
+const BAKED_STORY =
+[
+  {
+    "type": "heading",
+    "text": "ポートフォリオを「手紙」にする"
+  },
+  {
+    "type": "text",
+    "text": "きっかけは、前期の課題『彼方への手紙』でした。手紙をデジタルに変換してQRコードにし、遠くの誰かへ届ける、という案を考えたのが始まりです。物としての手紙をできるだけ小さくして、中身だけをデジタルにのせて飛ばす。この「物を最小にして、中身をデジタルで飛ばす」という発想が面白かったので、ポートフォリオそのものをこの形にしてみようと思いました。そこでこのサイトは、制作物を一覧で並べるのではなく、一通ずつの手紙として綴じています。作品を「見せる」のではなく「渡す」。受け取った人が封を開けて中を覗く、という体験そのものをサイトの構造にしました。"
+  },
+  {
+    "type": "heading",
+    "text": "手紙そのものを立体で作る"
+  },
+  {
+    "type": "text",
+    "text": "手紙は、平面の画像ではなく3つのレイヤーに分けてBlenderで3Dとして制作しました。立体感を追求するためで、封筒や中身が本当に厚みを持った物として存在しているように見せることを狙っています。この立体的な素材が、あとの開封の動きや傾きの表現の土台になっています。"
+  },
+  {
+    "type": "image",
+    "src": "assets/contents/story01.webp",
+    "caption": ""
+  },
+  {
+    "type": "heading",
+    "text": "封を開ける、という体験"
+  },
+  {
+    "type": "text",
+    "text": "このサイトの中心は、封筒が開いて中身が飛び出る瞬間です。封筒がまず開き、中の写真やステッカーが動き出し、閉じるときは中身が収まってから封筒が閉じる。ただ画面が切り替わるのではなく、実際に一通を開封しているような手ざわりが出るよう作り込みました。中身は直線ではなく弧を描いて浮かび上がり、紙が封筒から滑り出て空気に乗るような動きを目指しました。"
+  },
+  {
+    "type": "image",
+    "src": "assets/contents/story02.webp",
+    "caption": ""
+  },
+  {
+    "type": "text",
+    "text": "一枚一枚の配置を自分の手で詰めていくために、専用の編集画面も作りました。封筒の中身を画面上で自由に置き、回してサイズを変え、飛び出すときの軌道のカーブまで調整できます。この細部を手作業で納得いくまで詰められる仕組みそのものを用意したことが、裏側でいちばんこだわった点かもしれません。"
+  },
+  {
+    "type": "heading",
+    "text": "本物に近づけるための仕掛け"
+  },
+  {
+    "type": "text",
+    "text": "手紙らしさを出すために、細かい工夫を重ねています。ステッカーの表面には、シールらしく斜めの光がすっと横切ります。展開したギャラリーでは、中央の一枚がカーソルの位置に合わせて立体的に傾き、光の反射もその方向へ動く。スマホでは端末を傾けると同じように反応するので、手に取って光にかざしている感覚になります。細部の見せ方にもこだわっていて、CDは、クリックすると回転しながらラジオが再生されます。"
+  },
+  {
+    "type": "heading",
+    "text": "背景 ─ 空とアスキーアート"
+  },
+  {
+    "type": "text",
+    "text": "背景は、After Effectsで空の映像にアスキーアートを重ねて制作しました。手紙というアナログな媒体をデジタルに置き換えた、というこのサイトのコンセプトを、背景そのもので表現するためです。アスキーアートはそのまま使うと平坦な見た目になってしまうので、2種類のノイズを加えることで、単調にならない複雑な質感を持たせています。"
+  },
+  {
+    "type": "image",
+    "src": "assets/contents/story03.webp",
+    "caption": "ノイズ適用前のアスキーアート"
+  },
+  {
+    "type": "image",
+    "src": "assets/contents/story04.webp",
+    "caption": "ノイズ適用後のアスキーアート"
+  }
+]
 /* 保存は IndexedDB を使用（画像をbase64で埋め込むため localStorage の容量制限を超える）。 */
 const DB_NAME = 'choki', DB_STORE = 'kv', DB_KEY = 'letterContents';
+const STORY_DB_KEY = 'storyContent'; // 特別な手紙（ブログ本文）の保存キー
 function idbOpen() {
   return new Promise((res, rej) => {
     const r = indexedDB.open(DB_NAME, 1);
@@ -517,19 +595,19 @@ function idbOpen() {
     r.onerror = () => rej(r.error);
   });
 }
-async function idbGet() {
+async function idbGet(key = DB_KEY) {
   const db = await idbOpen();
   return new Promise((res, rej) => {
-    const rq = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(DB_KEY);
+    const rq = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
     rq.onsuccess = () => res(rq.result);
     rq.onerror = () => rej(rq.error);
   });
 }
-async function idbSet(val) {
+async function idbSet(val, key = DB_KEY) {
   const db = await idbOpen();
   return new Promise((res, rej) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).put(JSON.parse(JSON.stringify(val)), DB_KEY);
+    tx.objectStore(DB_STORE).put(JSON.parse(JSON.stringify(val)), key);
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
@@ -537,8 +615,11 @@ async function idbSet(val) {
 
 // 初期はBAKEDで開始し、起動後にIndexedDBから非同期で読み込む
 let letterContents = JSON.parse(JSON.stringify(BAKED_CONTENTS));
+let storyContent = JSON.parse(JSON.stringify(BAKED_STORY));
 let editorRefresh = null; // エディタ再描画フック（DEBUG時のみ設定）
+let storyRefresh = null;  // 特別な手紙のエディタ再描画フック（DEBUG時のみ設定）
 function saveContents() { return idbSet(letterContents); } // Promiseを返す
+function saveStory() { return idbSet(storyContent, STORY_DB_KEY); }
 
 const defaultState = (over = {}) => Object.assign({ x: 50, y: 50, rot: 0, scale: 1 }, over);
 const lerp = (a, b, p) => a + (b - a) * p;

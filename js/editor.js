@@ -44,6 +44,23 @@ function initEditor() {
       </div>
       <div class="objlist" id="ed-glist"></div>
     </div>
+    <div class="sec">
+      <div class="sec-head">
+        <label>特別な手紙 — このサイトについて</label>
+        <button class="btn sm" id="ed-story-view">確認</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="ed-story-h">＋見出し</button>
+        <button class="btn" id="ed-story-p">＋本文</button>
+        <button class="btn" id="ed-story-img">＋画像</button>
+      </div>
+      <input type="file" id="ed-story-file" accept="image/*" hidden>
+      <div class="objlist" id="ed-story-list"></div>
+      <div class="row" id="ed-story-editrow" style="display:none">
+        <label id="ed-story-label">本文</label>
+        <textarea id="ed-story-text"></textarea>
+      </div>
+    </div>
     <div id="ed-controls" style="display:none">
       <div class="sec">
         <div class="state-tabs">
@@ -74,7 +91,7 @@ function initEditor() {
         <button class="btn danger" id="ed-clear">この手紙を空に</button>
       </div>
       <button class="btn wide" id="ed-bake">画像を焼き込んでJSON書き出し</button>
-      <p class="hint">埋め込み画像を webp で assets/contents に保存し、軽量JSONを js/config.js の BAKED_CONTENTS へ貼り付けます。</p>
+      <p class="hint">埋め込み画像を webp で assets/contents に保存し、軽量JSONを js/config.js の BAKED_CONTENTS / BAKED_STORY へ貼り付けます。</p>
       <textarea id="ed-json" placeholder="書き出したJSONがここに表示されます" readonly></textarea>
     </div>
   `;
@@ -285,6 +302,83 @@ function initEditor() {
   // 横スクロールギャラリー展開を確認（現在の中身位置から飛ばす）
   $('#ed-gallery').addEventListener('click', () => { openGallery(letter); });
 
+  /* ── 特別な手紙（このサイトについて）ブロック編集 ── */
+  let storySel = -1;
+  const storyList = () => storyContent || (storyContent = []);
+  const curBlock = () => storyList()[storySel];
+  const blockName = { heading: '見出し', text: '本文', image: '画像' };
+
+  // 選択中ブロックの編集欄（見出し/本文=テキスト、画像=キャプション）
+  function refreshStoryEdit() {
+    const row = $('#ed-story-editrow');
+    const b = curBlock();
+    if (!b) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    $('#ed-story-label').textContent = b.type === 'image' ? 'キャプション（任意）' : blockName[b.type];
+    $('#ed-story-text').value = b.type === 'image' ? (b.caption || '') : (b.text || '');
+  }
+  function refreshStoryList() {
+    const wrap = $('#ed-story-list'); wrap.innerHTML = '';
+    storyList().forEach((b, idx) => {
+      const it = document.createElement('div');
+      it.className = 'objitem' + (idx === storySel ? ' sel' : '');
+      const preview = (b.type === 'image' ? (b.caption || '') : (b.text || '')).replace(/\n/g, ' ');
+      it.innerHTML =
+        (b.type === 'image' ? `<img src="${b.src}">` : '') +
+        `<span>${blockName[b.type] || b.type}｜${preview.slice(0, 10)}</span>` +
+        `<button class="objmove" data-act="up" title="上へ"${idx === 0 ? ' disabled' : ''}>▲</button>` +
+        `<button class="objmove" data-act="down" title="下へ"${idx === storyList().length - 1 ? ' disabled' : ''}>▼</button>` +
+        `<button class="objmove" data-act="del" title="削除">✕</button>`;
+      it.addEventListener('click', (e) => {
+        if (e.target.classList.contains('objmove')) return;
+        storySel = idx; refreshStoryList(); refreshStoryEdit();
+      });
+      it.querySelector('[data-act=up]').addEventListener('click', () => moveBlock(idx, -1));
+      it.querySelector('[data-act=down]').addEventListener('click', () => moveBlock(idx, +1));
+      it.querySelector('[data-act=del]').addEventListener('click', () => {
+        storyList().splice(idx, 1);
+        storySel = Math.min(storySel, storyList().length - 1);
+        storyChanged();
+      });
+      wrap.appendChild(it);
+    });
+  }
+  function moveBlock(idx, dir) {
+    const arr = storyList(); const j = idx + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[idx], arr[j]] = [arr[j], arr[idx]];
+    if (storySel === idx) storySel = j; else if (storySel === j) storySel = idx;
+    storyChanged();
+  }
+  // 変更をエディタUIと本文表示（story.js の renderStory）へ反映
+  function storyChanged() {
+    markDirty(); refreshStoryList(); refreshStoryEdit(); renderStory();
+  }
+  function addBlock(b) {
+    storyList().push(b); storySel = storyList().length - 1; storyChanged();
+  }
+  $('#ed-story-h').addEventListener('click', () => addBlock({ type: 'heading', text: '見出し' }));
+  $('#ed-story-p').addEventListener('click', () => addBlock({ type: 'text', text: '' }));
+  $('#ed-story-img').addEventListener('click', () => $('#ed-story-file').click());
+  $('#ed-story-file').addEventListener('change', (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => addBlock({ type: 'image', src: r.result, caption: '' });
+    r.readAsDataURL(f);
+    e.target.value = '';
+  });
+  $('#ed-story-text').addEventListener('input', () => {
+    const b = curBlock(); if (!b) return;
+    if (b.type === 'image') b.caption = $('#ed-story-text').value;
+    else b.text = $('#ed-story-text').value;
+    markDirty(); renderStory(); // 展開中なら即プレビューに反映
+  });
+  $('#ed-story-text').addEventListener('change', refreshStoryList); // 一覧のプレビュー文字列を更新
+  // 展開を確認（エディタはstoryより前面にあるので編集しながら確認できる）
+  $('#ed-story-view').addEventListener('click', () => {
+    if (window.storyOpen) closeStory(); else openStory();
+  });
+
   // ── 手動保存 ──
   let dirty = false;
   function markDirty() {
@@ -294,7 +388,7 @@ function initEditor() {
   $('#ed-save').addEventListener('click', async () => {
     $('#ed-save').textContent = '保存中…';
     try {
-      await saveContents();
+      await Promise.all([saveContents(), saveStory()]);
       dirty = false;
       $('#ed-save').textContent = '保存しました ✓';
       setTimeout(() => { if (!dirty) $('#ed-save').textContent = '保存'; }, 1500);
@@ -383,12 +477,33 @@ function initEditor() {
         }
       }
 
-      // 3) 軽量JSONを出力＆コピー
-      const json = JSON.stringify(slim, null, 2);
+      // 3) 特別な手紙（ブログ）の埋め込み画像も同様に書き出す（story連番）
+      const slimStory = JSON.parse(JSON.stringify(storyContent || []));
+      let sCounter = 0;
+      for (const b of slimStory) {
+        if (b.type !== 'image' || typeof b.src !== 'string' || !b.src.startsWith('data:')) continue;
+        if (seen.has(b.src)) { b.src = seen.get(b.src); continue; }
+        sCounter++;
+        const isSvg = /^data:image\/svg\+xml/i.test(b.src);
+        const ext = isSvg ? 'svg' : 'webp';
+        const name = `story${String(sCounter).padStart(2, '0')}.${ext}`;
+        setLabel(`書き出し中… ${name}`);
+        const blob = isSvg ? svgDataUrlToBlob(b.src) : await dataUrlToWebp(b.src);
+        const fh = await dir.getFileHandle(name, { create: true });
+        const w = await fh.createWritable();
+        await w.write(blob); await w.close();
+        const path = `assets/contents/${name}`;
+        seen.set(b.src, path);
+        b.src = path;
+        written++;
+      }
+
+      // 4) 軽量JSONを出力＆コピー（BAKED_CONTENTS / BAKED_STORY の2つ）
+      const json = `// BAKED_CONTENTS =\n${JSON.stringify(slim, null, 2)}\n\n// BAKED_STORY =\n${JSON.stringify(slimStory, null, 2)}`;
       $('#ed-json').value = json;
       if (navigator.clipboard) { try { await navigator.clipboard.writeText(json); } catch {} }
       setLabel(`✓ 画像${written}枚を保存・JSONをコピー（${json.length.toLocaleString()}字）`);
-      alert(`完了しました。\n・画像 ${written} 枚を assets/contents に保存\n・軽量JSON（${json.length.toLocaleString()}字）を下の欄に出力＆コピー\n\nこのJSONを js/config.js の BAKED_CONTENTS = の右辺に貼り付けてください。`);
+      alert(`完了しました。\n・画像 ${written} 枚を assets/contents に保存\n・軽量JSON（${json.length.toLocaleString()}字）を下の欄に出力＆コピー\n\n各JSONを js/config.js の BAKED_CONTENTS = / BAKED_STORY = の右辺に貼り付けてください。`);
       setTimeout(() => setLabel(orig), 4000);
     } catch (err) {
       if (err && err.name === 'AbortError') { setLabel(orig); return; } // フォルダ選択キャンセル
@@ -549,6 +664,8 @@ function initEditor() {
 
   // IndexedDBの非同期ロード完了時にエディタを再描画するためのフック
   editorRefresh = () => { sel = -1; refreshAll(); };
+  storyRefresh  = () => { storySel = -1; refreshStoryList(); refreshStoryEdit(); };
 
+  refreshStoryList(); // 特別な手紙のブロック一覧（BAKED分を初期表示）
   gotoLetter(0); // 起動
 }

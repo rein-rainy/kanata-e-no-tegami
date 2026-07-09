@@ -22,7 +22,8 @@
   <nav class="dots" id="dots" aria-label="手紙ナビゲーション"></nav>
 
   <!-- スクリプトは読み込み順に依存（共有スコープ）。順序を変えないこと:
-       config（設定/データ/保存） → deck（カード/封筒） → gallery（横展開） → editor（?debug） -->
+       config（設定/データ/保存） → deck（カード/封筒） → gallery（横展開）
+       → story（特別な手紙/このサイトについて） → editor（?debug） -->
   <!-- 背景動画が再生可能になったらローディングオーバーレイを消す -->
   <script>
     (function () {
@@ -46,6 +47,7 @@
   <script src="js/config.js"></script>
   <script src="js/deck.js"></script>
   <script src="js/gallery.js"></script>
+  <script src="js/story.js"></script>
   <script src="js/editor.js"></script>
 </body>
 </html>

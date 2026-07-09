@@ -485,6 +485,110 @@ body.debug .envelope.playing .content-obj { outline: none; } /* 再生中は枠�
 .gallery-close:hover { background: rgba(40, 40, 48, 0.7); transform: scale(1.08); }
 .gallery.show-bg .gallery-close { opacity: 1; transform: scale(1); pointer-events: auto; }
 
+/* ───── 特別な手紙（このサイトについて） ───── */
+/* 封筒は envelope_rotate（30フレーム回転）を1枚の canvas で描画。
+   .envelope > canvas の共通ルールで inset:0 / contain 配置される。 */
+.special-card .sp-canvas { z-index: 1; }
+/* グロー(.envelope::before)は通常封筒(envelope01〜03)のシルエット(--mask-env)で
+   マスクしているが、特別カードは envelope_rotate を描く。回転素材の封筒は箱(950×1080)
+   の中で約4%上に位置し下端が短いため、通常マスクだと封筒の下にグローがはみ出して
+   「謎の影」に見える。特別カードだけグローを約4%上へずらして封筒シルエットに合わせる。 */
+.special-envelope::before { transform: translateY(-4%) translateZ(0); }
+
+/* 展開オーバーレイ: 封筒が上部へアイコン化し、下にブログ本文。
+   z-index はギャラリー(200)より下・ドットナビ(50)より上。 */
+.story { position: fixed; inset: 0; z-index: 150; display: none; }
+.story.active { display: block; }
+/* 背景: ギャラリーと同じブラー＆暗転（フェードで切替） */
+.story-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(8, 8, 10, 0);
+  backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
+  transition: background 0.45s ease,
+              backdrop-filter 0.45s ease, -webkit-backdrop-filter 0.45s ease;
+}
+.story.show-bg .story-backdrop {
+  background: rgba(8, 8, 10, 0.62);
+  backdrop-filter: blur(11px); -webkit-backdrop-filter: blur(11px);
+}
+.story-scroll {
+  position: absolute; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.story-scroll::-webkit-scrollbar { display: none; }
+/* アイコン化した封筒は本文と一緒にスクロールで流れていく（上部固定しない） */
+.story-head {
+  position: relative; z-index: 2;
+  display: flex; justify-content: center;
+  padding: clamp(14px, 3vh, 28px) 0 10px;
+  pointer-events: none;          /* 余白クリックで閉じられるようアイコンのみ受ける */
+}
+.story-icon {
+  position: relative;
+  width: clamp(60px, 9vmin, 92px);
+  aspect-ratio: 950 / 1080;
+  cursor: pointer; pointer-events: auto;
+  will-change: transform;
+}
+.story-icon-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; user-select: none; -webkit-user-drag: none;
+}
+/* ブログ本文（show-bg に合わせて下からフェードイン） */
+.story-body {
+  max-width: min(660px, 86vw);
+  margin: clamp(16px, 4vh, 40px) auto 0;
+  padding-bottom: 14vh;
+  opacity: 0; transform: translateY(26px);
+  transition: opacity 0.5s ease 0.18s, transform 0.5s ease 0.18s;
+}
+.story.show-bg .story-body { opacity: 1; transform: translateY(0); }
+.story-body h2 {
+  font-size: clamp(1.05rem, 2.6vmin, 1.3rem);
+  font-weight: 600;
+  letter-spacing: 0.22em; text-indent: 0.22em;
+  text-align: center;
+  margin: 3.2em 0 1.4em;
+}
+.story-body h2:first-child { margin-top: 0.6em; }
+.story-body p {
+  font-size: clamp(0.86rem, 2.1vmin, 0.98rem);
+  line-height: 2.15;
+  letter-spacing: 0.05em;
+  margin: 0 0 1.8em;
+  white-space: pre-wrap;         /* エディタの改行をそのまま反映 */
+  opacity: 0.94;
+}
+.story-body figure { margin: 2.4em 0; }
+.story-body figure img {
+  display: block; width: 100%; height: auto;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.story-body figcaption {
+  margin-top: 0.9em; text-align: center;
+  font-size: 0.74rem; letter-spacing: 0.12em; opacity: 0.55;
+}
+/* 閉じるボタン（ギャラリーと同じ見た目） */
+.story-close {
+  position: fixed; top: 18px; right: 20px; z-index: 210;
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(20, 20, 24, 0.5); color: var(--ink);
+  font-size: 22px; line-height: 1; cursor: pointer; display: block;
+  opacity: 0; transform: scale(0.4); pointer-events: none;
+  transition: background 0.25s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.3s ease;
+}
+.story-close:hover { background: rgba(40, 40, 48, 0.7); transform: scale(1.08); }
+.story.show-bg .story-close { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+/* デバッグ時はエディタを story(150) より前面に出し、編集しながら確認できるようにする。
+   ギャラリー(200)より下は据え置き。 */
+body.debug #editor { z-index: 160; }
+
 /* ───── デバッグエディタ（白基調） ───── */
 #editor {
   position: fixed; left: 16px; bottom: 16px; z-index: 100;

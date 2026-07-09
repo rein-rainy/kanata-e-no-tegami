@@ -278,6 +278,44 @@ WORKSHOPS.forEach((ws, i) => {
   ctx.push({ cardEl: card, envelopeEl, contentsEl, renderContents, applyContents, animate, reset, holdOpen, holdOpenThen, releaseClose, isOpen, redrawCurrent, reapply });
 });
 
+/* ── 特別カード（最下部・このサイトについて） ──
+   他の手紙と違いホバーでは開かない。封筒は envelope01〜03を統合した
+   30フレームの回転アニメ素材（envelope_rotate）を canvas で描画する。
+   クリックで回転しながら縮小し、画面上部へアイコン化してブログ本文を表示（story.js）。 */
+const specialCard = document.createElement('section');
+specialCard.className = 'card special-card';
+specialCard.innerHTML = `
+  <div class="envelope special-envelope">
+    <canvas class="sp-canvas" width="950" height="1080"></canvas>
+  </div>
+  <div class="label">
+    <img class="label-img" src="assets/Info/Info-10.png" alt="ABOUT　このサイトについて">
+  </div>`;
+deck.appendChild(specialCard);
+const specialEnvelope = specialCard.querySelector('.envelope');
+const specialCanvas = specialCard.querySelector('.sp-canvas');
+const specialCtx = specialCanvas.getContext('2d');
+
+// 回転フレーム(1..TOTAL_FRAMES)を canvas へ描画。未デコードなら何もしない。
+function drawRotate(canvas, c2d, frame) {
+  const bm = ROTATE_BITMAPS[Math.min(TOTAL_FRAMES, Math.max(1, Math.round(frame)))];
+  if (!bm) return;
+  const w = bm.naturalWidth || bm.width, h = bm.naturalHeight || bm.height;
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  c2d.clearRect(0, 0, w, h);
+  c2d.drawImage(bm, 0, 0);
+}
+const drawSpecial = (frame) => drawRotate(specialCanvas, specialCtx, frame);
+window.drawRotate = drawRotate; // story.js からアイコンcanvasの描画に使う
+window.drawSpecial = drawSpecial;
+
+// 回転フレームのデコードを開始（表示実寸×DPRに縮小）。完了後に初期フレームを描き直す。
+{
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dispW = specialEnvelope.clientWidth || 520;
+  loadRotateFrames(Math.round(dispW * dpr), () => drawSpecial(1)).then(() => drawSpecial(1));
+}
+
 // フレームのデコードを開始。表示実寸×DPRに合わせて縮小し、メモリを節約する。
 // clientWidth の読み取りでレイアウトが確定するので rAF を待たず同期で測れる
 // （rAF は非表示タブでは発火しないため、デコード開始を rAF に依存させない）。
@@ -304,7 +342,8 @@ if (!DEBUG) {
 const cards = Array.from(deck.querySelectorAll('.card'));
 cards.forEach((_, i) => {
   const b = document.createElement('button');
-  b.setAttribute('aria-label', i === 0 ? '表紙' : `手紙 ${i}`);
+  b.setAttribute('aria-label',
+    i === 0 ? '表紙' : i === cards.length - 1 ? 'このサイトについて' : `手紙 ${i}`);
   b.addEventListener('click', () => goTo(i));
   dotsNav.appendChild(b);
 });
@@ -345,6 +384,7 @@ deck.addEventListener('wheel', (e) => {
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (galleryOpen) return; // ギャラリー展開中はデッキ移動を止める
+  if (window.storyOpen) return; // 特別な手紙の展開中も止める（story.js）
   if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); goTo(current + 1); }
   if (e.key === 'ArrowUp'   || e.key === 'PageUp')   { e.preventDefault(); goTo(current - 1); }
 });
