@@ -450,10 +450,21 @@ function initEditor() {
       setLabel('保存先フォルダ（assets/contents）を選択…');
       const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
 
+      // 既存ファイルの最大連番を調べ、新規はその続きから採番（既存の上書き防止）
+      const maxIndexOf = async (prefix) => {
+        let max = 0;
+        const re = new RegExp(`^${prefix}(\\d+)\\.(?:webp|svg)$`, 'i');
+        for await (const [fname] of dir.entries()) {
+          const m = re.exec(fname);
+          if (m) max = Math.max(max, parseInt(m[1], 10));
+        }
+        return max;
+      };
+
       // 2) 全手紙を走査し、data: URL を集約（同一画像は1ファイルに集約）
       const slim = JSON.parse(JSON.stringify(letterContents));
       const seen = new Map();   // dataUrl -> "assets/contents/xxx.webp"
-      let counter = 0, written = 0;
+      let counter = await maxIndexOf('embed'), written = 0;
       const keys = Object.keys(slim);
       for (const k of keys) {
         const arr = slim[k] || [];
@@ -479,7 +490,7 @@ function initEditor() {
 
       // 3) 特別な手紙（ブログ）の埋め込み画像も同様に書き出す（story連番）
       const slimStory = JSON.parse(JSON.stringify(storyContent || []));
-      let sCounter = 0;
+      let sCounter = await maxIndexOf('story');
       for (const b of slimStory) {
         if (b.type !== 'image' || typeof b.src !== 'string' || !b.src.startsWith('data:')) continue;
         if (seen.has(b.src)) { b.src = seen.get(b.src); continue; }
