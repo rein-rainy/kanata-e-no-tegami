@@ -267,7 +267,10 @@ function openGallery(i) {
     const tilt = document.createElement('div'); tilt.className = 'gi-tilt';
     if (o.sticker) { // 反射はステッカーONのみ。imgは後で gi-tilt の先頭に入れるので glare が上に乗る
       // CD合成は CD-01/02/03 それぞれの形で反射を出す。それ以外は素材1枚。
-      const masks = o.cdStack
+      // 判定は deck.js の描画分岐（obj.cdStack || /embed15/）と揃える。揃えないと
+      // CDが3レイヤーで描かれているのに反射だけ旧embed15の形になりズレる。
+      const isCd = o.cdStack || /embed15/.test(o.src || '');
+      const masks = isCd
         ? [['assets/contents/CD-03.png', 1], ['assets/contents/CD-01.png', 3]] // CD-02は光沢無し
         : [[o.src, 1]];
       masks.forEach(([m, z]) => {
