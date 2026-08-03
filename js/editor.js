@@ -6,6 +6,21 @@ if (DEBUG) initEditor();
 // 保存済みデータを IndexedDB から非同期で読み込み、全カードへ反映
 idbGet().then((data) => {
   if (!data) return;
+  // 2026-08: 手紙5・7（旧index 4・6）の削除に伴う一度きりの移行。
+  // 旧9通構成の保存データが残っていたら現在の7通構成へ詰め替え、保存し直す。
+  if (WORKSHOPS.length === 7 && data['8'] !== undefined) {
+    const migrated = {};
+    [0, 1, 2, 3, 5, 7, 8].forEach((old, i) => { migrated[i] = data[old] || []; });
+    data = migrated;
+    idbSet(data).catch(() => {});
+  }
+  // 2026-08: CD合成の判定をファイル名(embed15)から cdStack フラグへ移行。
+  // 手紙7のCDオブジェクトにフラグが無い保存データなら一度だけ付与する。
+  const cdObj = data[6] && data[6].length === 1 ? data[6][0] : null;
+  if (cdObj && cdObj.cdStack === undefined) {
+    cdObj.cdStack = true;
+    idbSet(data).catch(() => {});
+  }
   letterContents = data;
   ctx.forEach((c) => c.reset());        // 各カードの中身を再生成
   if (editorRefresh) editorRefresh();   // エディタも再描画
@@ -75,6 +90,10 @@ function initEditor() {
           <label>ステッカーエフェクト</label>
           <button class="btn sm" id="ed-sticker">OFF</button>
         </div>
+        <div class="toggle-row">
+          <label>CD合成（クリックで回転・再生）</label>
+          <button class="btn sm" id="ed-cd">OFF</button>
+        </div>
         <div class="btnrow">
           <button class="btn" id="ed-copystate">反対へコピー</button>
           <button class="btn" id="ed-dup">複製</button>
@@ -90,9 +109,9 @@ function initEditor() {
         <button class="btn" id="ed-export">JSONコピー</button>
         <button class="btn danger" id="ed-clear">この手紙を空に</button>
       </div>
-      <button class="btn wide" id="ed-bake">画像を焼き込んでJSON書き出し</button>
-      <p class="hint">埋め込み画像を webp で assets/contents に保存し、軽量JSONを js/config.js の BAKED_CONTENTS / BAKED_STORY へ貼り付けます。</p>
-      <textarea id="ed-json" placeholder="書き出したJSONがここに表示されます" readonly></textarea>
+      <button class="btn wide" id="ed-bake">焼き込み書き出し（自動保存）</button>
+      <p class="hint">埋め込み画像を webp で assets/contents に、データを js/baked.js に自動で書き込みます。dev_server.py で起動している必要があります。</p>
+      <textarea id="ed-json" placeholder="書き出した内容の控えがここに表示されます" readonly></textarea>
     </div>
   `;
   document.body.appendChild(panel);
@@ -149,6 +168,8 @@ function initEditor() {
     $('#ed-src').value = o.src.startsWith('data:') ? '(data URL / 画像埋め込み)' : o.src;
     $('#ed-sticker').classList.toggle('on', !!o.sticker);
     $('#ed-sticker').textContent = o.sticker ? 'ON' : 'OFF';
+    $('#ed-cd').classList.toggle('on', !!o.cdStack);
+    $('#ed-cd').textContent = o.cdStack ? 'ON' : 'OFF';
   }
   // ── 横スクロール（ギャラリー）並び順＆スケール ──
   function ensureGal(o, idx) {
@@ -269,6 +290,12 @@ function initEditor() {
   $('#ed-sticker').addEventListener('click', () => {
     if (!curObj()) return;
     curObj().sticker = !curObj().sticker;
+    markDirty(); refreshAll();
+  });
+
+  $('#ed-cd').addEventListener('click', () => {
+    if (!curObj()) return;
+    curObj().cdStack = !curObj().cdStack;
     markDirty(); refreshAll();
   });
 
@@ -437,87 +464,111 @@ function initEditor() {
     return new Blob([text], { type: 'image/svg+xml' });
   }
 
+  // Blob → base64 文字列（data: ヘッダを除いた本体のみ）
+  function blobToBase64(blob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).slice(String(r.result).indexOf(',') + 1));
+      r.onerror = () => rej(new Error('base64変換に失敗'));
+      r.readAsDataURL(blob);
+    });
+  }
+
   $('#ed-bake').addEventListener('click', async () => {
     const btn = $('#ed-bake');
     const orig = btn.textContent;
     const setLabel = (t) => { btn.textContent = t; };
     try {
-      // 1) 保存先フォルダ（assets/contents）を選択
-      if (!window.showDirectoryPicker) {
-        alert('このブラウザはフォルダ直書き込みに未対応です。Chrome / Edge で開いてください。');
+      // 1) dev_server.py の書き込みAPIに接続確認＆既存ファイル一覧を取得
+      setLabel('サーバー確認中…');
+      let existing;
+      try {
+        const res = await fetch('api/contents-list', { cache: 'no-store' });
+        if (!res.ok) throw new Error();
+        existing = (await res.json()).files || [];
+      } catch {
+        alert('書き出しAPIに接続できません。\nwebsite フォルダで dev_server.py を起動して開き直してください:\n\n  python3 dev_server.py\n\n（python3 -m http.server では書き出しできません）');
+        setLabel(orig);
         return;
       }
-      setLabel('保存先フォルダ（assets/contents）を選択…');
-      const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
 
-      // 既存ファイルの最大連番を調べ、新規はその続きから採番（既存の上書き防止）
-      const maxIndexOf = async (prefix) => {
+      // 既存ファイルの最大連番の続きから採番（既存の上書き防止）
+      const maxIndexOf = (prefix) => {
         let max = 0;
         const re = new RegExp(`^${prefix}(\\d+)\\.(?:webp|svg)$`, 'i');
-        for await (const [fname] of dir.entries()) {
+        existing.forEach((fname) => {
           const m = re.exec(fname);
           if (m) max = Math.max(max, parseInt(m[1], 10));
-        }
+        });
         return max;
       };
 
-      // 2) 全手紙を走査し、data: URL を集約（同一画像は1ファイルに集約）
-      const slim = JSON.parse(JSON.stringify(letterContents));
+      // 2) data: URL を webp/svg に変換して送信用に集める（同一画像は1ファイルに集約）
+      const files = [];         // {name, dataBase64}
       const seen = new Map();   // dataUrl -> "assets/contents/xxx.webp"
-      let counter = await maxIndexOf('embed'), written = 0;
-      const keys = Object.keys(slim);
-      for (const k of keys) {
-        const arr = slim[k] || [];
-        for (const o of arr) {
-          if (typeof o.src !== 'string' || !o.src.startsWith('data:')) continue; // 既にパス参照
-          if (seen.has(o.src)) { o.src = seen.get(o.src); continue; }
-          counter++;
-          // SVGはwebpに変換せず、SVGのまま書き出す
-          const isSvg = /^data:image\/svg\+xml/i.test(o.src);
-          const ext = isSvg ? 'svg' : 'webp';
-          const name = `embed${String(counter).padStart(2, '0')}.${ext}`;
-          setLabel(`書き出し中… ${name}`);
-          const blob = isSvg ? svgDataUrlToBlob(o.src) : await dataUrlToWebp(o.src);
-          const fh = await dir.getFileHandle(name, { create: true });
-          const w = await fh.createWritable();
-          await w.write(blob); await w.close();
-          const path = `assets/contents/${name}`;
-          seen.set(o.src, path);
-          o.src = path;
-          written++;
-        }
-      }
-
-      // 3) 特別な手紙（ブログ）の埋め込み画像も同様に書き出す（story連番）
-      const slimStory = JSON.parse(JSON.stringify(storyContent || []));
-      let sCounter = await maxIndexOf('story');
-      for (const b of slimStory) {
-        if (b.type !== 'image' || typeof b.src !== 'string' || !b.src.startsWith('data:')) continue;
-        if (seen.has(b.src)) { b.src = seen.get(b.src); continue; }
-        sCounter++;
-        const isSvg = /^data:image\/svg\+xml/i.test(b.src);
-        const ext = isSvg ? 'svg' : 'webp';
-        const name = `story${String(sCounter).padStart(2, '0')}.${ext}`;
-        setLabel(`書き出し中… ${name}`);
-        const blob = isSvg ? svgDataUrlToBlob(b.src) : await dataUrlToWebp(b.src);
-        const fh = await dir.getFileHandle(name, { create: true });
-        const w = await fh.createWritable();
-        await w.write(blob); await w.close();
+      const bake = async (holder, prefix, counter) => {
+        if (typeof holder.src !== 'string' || !holder.src.startsWith('data:')) return counter; // 既にパス参照
+        if (seen.has(holder.src)) { holder.src = seen.get(holder.src); return counter; }
+        counter++;
+        // SVGはwebpに変換せず、SVGのまま書き出す
+        const isSvg = /^data:image\/svg\+xml/i.test(holder.src);
+        const name = `${prefix}${String(counter).padStart(2, '0')}.${isSvg ? 'svg' : 'webp'}`;
+        setLabel(`変換中… ${name}`);
+        const blob = isSvg ? svgDataUrlToBlob(holder.src) : await dataUrlToWebp(holder.src);
+        files.push({ name, dataBase64: await blobToBase64(blob) });
         const path = `assets/contents/${name}`;
-        seen.set(b.src, path);
-        b.src = path;
-        written++;
+        seen.set(holder.src, path);
+        holder.src = path;
+        return counter;
+      };
+
+      const slim = JSON.parse(JSON.stringify(letterContents));
+      let counter = maxIndexOf('embed');
+      for (const k of Object.keys(slim)) {
+        for (const o of (slim[k] || [])) counter = await bake(o, 'embed', counter);
       }
 
-      // 4) 軽量JSONを出力＆コピー（BAKED_CONTENTS / BAKED_STORY の2つ）
-      const json = `// BAKED_CONTENTS =\n${JSON.stringify(slim, null, 2)}\n\n// BAKED_STORY =\n${JSON.stringify(slimStory, null, 2)}`;
-      $('#ed-json').value = json;
-      if (navigator.clipboard) { try { await navigator.clipboard.writeText(json); } catch {} }
-      setLabel(`✓ 画像${written}枚を保存・JSONをコピー（${json.length.toLocaleString()}字）`);
-      alert(`完了しました。\n・画像 ${written} 枚を assets/contents に保存\n・軽量JSON（${json.length.toLocaleString()}字）を下の欄に出力＆コピー\n\n各JSONを js/config.js の BAKED_CONTENTS = / BAKED_STORY = の右辺に貼り付けてください。`);
+      // 特別な手紙（ブログ）の埋め込み画像も同様（story連番）
+      const slimStory = JSON.parse(JSON.stringify(storyContent || []));
+      let sCounter = maxIndexOf('story');
+      for (const b of slimStory) {
+        if (b.type === 'image') sCounter = await bake(b, 'story', sCounter);
+      }
+
+      // 3) baked.js の中身を生成し、画像と一緒にサーバーへ送信（直接ファイル書き込み）
+      const header = `/* ============================================================
+   焼き込みデータ（config.js から分離）
+   ※ このファイルは index.html で config.js より前に読み込むこと。
+   ※ 更新方法: dev_server.py で起動 → index.html?debug のエディタ
+     「焼き込み書き出し（自動保存）」ボタンで自動生成される（手動編集不要）。
+============================================================ */`;
+      const baked = `${header}\nconst BAKED_CONTENTS =\n${JSON.stringify(slim, null, 2)}\n\nconst BAKED_STORY =\n${JSON.stringify(slimStory, null, 2)}\n`;
+
+      setLabel('サーバーへ書き込み中…');
+      const res = await fetch('api/bake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files, baked }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.ok) throw new Error(result.error || `HTTP ${res.status}`);
+
+      // 書き出したパス参照を編集データにも反映して保存し直す。
+      // これをしないと次回の焼き込みで同じ画像が別番号のファイルへ重複出力される。
+      letterContents = slim;
+      storyContent = slimStory;
+      ctx.forEach((c) => c.reset());
+      sel = -1; refreshAll();
+      storySel = -1; refreshStoryList(); refreshStoryEdit(); renderStory();
+      await Promise.all([saveContents(), saveStory()]);
+      dirty = false;
+      $('#ed-save').textContent = '保存';
+
+      $('#ed-json').value = baked; // 控えとして表示
+      setLabel(`✓ 画像${files.length}枚と js/baked.js を書き込みました`);
+      alert(`完了しました。\n・画像 ${files.length} 枚を assets/contents に保存\n・js/baked.js を書き換え\n\nリロードすると焼き込み内容で表示されます。`);
       setTimeout(() => setLabel(orig), 4000);
     } catch (err) {
-      if (err && err.name === 'AbortError') { setLabel(orig); return; } // フォルダ選択キャンセル
       console.error(err);
       alert('書き出しに失敗しました: ' + (err && err.message || err));
       setLabel(orig);

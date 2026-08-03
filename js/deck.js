@@ -27,8 +27,8 @@ WORKSHOPS.forEach((ws, i) => {
       <canvas class="layer-01 frame1" width="950" height="1080"></canvas>
     </div>
     <div class="label">
-      <img class="label-img" src="assets/Info/Info-${i + 1}.png"
-           alt="LETTER ${String(i + 1).padStart(2, '0')} / 09　${ws.date}　${ws.title}">
+      <img class="label-img" src="${ws.info}"
+           alt="${ws.date}　${ws.title}">
     </div>`;
   deck.appendChild(card);
 
@@ -289,7 +289,7 @@ specialCard.innerHTML = `
     <canvas class="sp-canvas" width="950" height="1080"></canvas>
   </div>
   <div class="label">
-    <img class="label-img" src="assets/Info/Info-10.png" alt="ABOUT　このサイトについて">
+    <img class="label-img" src="assets/Info/Info-8.png" alt="8/3　マンデーポートフォリオ">
   </div>`;
 deck.appendChild(specialCard);
 const specialEnvelope = specialCard.querySelector('.envelope');
